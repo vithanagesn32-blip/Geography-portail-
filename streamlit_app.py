@@ -61,7 +61,8 @@ except Exception as e:
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 try:
-    df_global_students = conn.read(spreadsheet=DB_URL, worksheet="Student_DB", ttl=0)
+    # මෙන්න මෙතන ඔයාගේ අලුත්ම Worksheet (Tab) නම දැම්මා මචං:
+    df_global_students = conn.read(spreadsheet=DB_URL, worksheet="Student_Database_Geography", ttl=0)
 except Exception as e:
     st.error(f"⚠️ Unable to sync with database. Error Details: {e}")
     df_global_students = pd.DataFrame()
@@ -189,7 +190,7 @@ with menu[1]:
                             "Lon.": DISTRICT_DATA[dist]["lon"], "Lati.": DISTRICT_DATA[dist]["lat"], 
                             "Accesess": "Don't Allow"
                         }])
-                        conn.update(spreadsheet=DB_URL, worksheet="Student_DB", data=pd.concat([df_students, new_student], ignore_index=True))
+                        conn.update(spreadsheet=DB_URL, worksheet="Student_Database_Geography", data=pd.concat([df_students, new_student], ignore_index=True))
                         st.success("Successfully Registered Onto GeoSense Database Server! 🎉")
                         st.rerun()
 
@@ -252,7 +253,6 @@ with menu[3]:
     st.markdown("### 📍 Live Geospatial Student GIS Density Map")
     st.write("Leveraging built-in GIS properties to showcase the live island-wide registration footprint.")
     if not df_global_students.empty and 'Lati.' in df_global_students.columns and 'Lon.' in df_global_students.columns:
-        # Streamlit සිතියමට අවශ්‍ය 'lat' සහ 'lon' නම් වලට හරවා සිතියම අඳිනවා
         map_df = df_global_students[['Lati.', 'Lon.']].dropna().rename(columns={'Lati.': 'lat', 'Lon.': 'lon'})
         st.map(map_df, color="#0f4c5c")
     else:
@@ -322,12 +322,12 @@ with st.expander("⚙️ GeoSense Educational Matrix Control Panel (Staff Only)"
                         if col_btn.button("Revoke Access", key=f"admin_r_{idx}"):
                             df_admin.at[idx, 'Accesess'] = "Don't Allow"
                             df_admin_clean = df_admin.drop(columns=['formatted_phone'], errors='ignore')
-                            conn.update(spreadsheet=DB_URL, worksheet="Student_DB", data=df_admin_clean)
+                            conn.update(spreadsheet=DB_URL, worksheet="Student_Database_Geography", data=df_admin_clean)
                             st.rerun()
                     else:
                         col_status.markdown("<span style='color:#e36414;font-weight:bold;'>Locked 🔒</span>", unsafe_allow_html=True)
                         if col_btn.button("Grant Access", key=f"admin_g_{idx}"):
                             df_admin.at[idx, 'Accesess'] = "Allow"
                             df_admin_clean = df_admin.drop(columns=['formatted_phone'], errors='ignore')
-                            conn.update(spreadsheet=DB_URL, worksheet="Student_DB", data=df_admin_clean)
+                            conn.update(spreadsheet=DB_URL, worksheet="Student_Database_Geography", data=df_admin_clean)
                             st.rerun()
