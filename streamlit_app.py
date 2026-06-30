@@ -52,7 +52,7 @@ def format_sheet_phone(num):
     if len(cleaned) == 9 and cleaned.startswith('7'): return "0" + cleaned
     return cleaned
 
-# --- 4. GOOGLE SHEET CONNECTION (FIXED: Arguments isolated to .read / .update method bypasses the TypeError) ---
+# --- 4. GOOGLE SHEET CONNECTION ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 try:
@@ -310,5 +310,5 @@ with st.expander("⚙️ GeoSense Educational Matrix Control Panel (Staff Only)"
                         if col_btn.button("Grant Access", key=f"admin_g_{idx}"):
                             df_admin.at[idx, 'Access'] = "Allow"
                             df_admin_clean = df_admin.drop(columns=['formatted_phone'], errors='ignore')
-                            conn.update(spreadsheet=DB_URL, spreadsheet=DB_URL, worksheet="Student_DB", data=df_admin_clean)
+                            conn.update(spreadsheet=DB_URL, worksheet="Student_DB", data=df_admin_clean)
                             st.rerun()
