@@ -53,7 +53,8 @@ def format_sheet_phone(num):
     return cleaned
 
 # --- 4. GOOGLE SHEET CONNECTION (FIXED: Changed url to spreadsheet parameter) ---
-conn = st.connection("gsheets", type=GSheetsConnection, spreadsheet=DB_URL)
+# --- 4. GOOGLE SHEET CONNECTION (FIXED: Moved URL to Secrets to prevent TypeError) ---
+conn = st.connection("gsheets", type=GSheetsConnection)
 
 try:
     df_global_students = conn.read(worksheet="Student_DB", ttl=0)
