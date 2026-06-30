@@ -7,11 +7,15 @@ import re
 
 # --- 1. CONFIGURATION & DIRECT DB LINK ---
 DB_URL = "https://docs.google.com/spreadsheets/d/1XByjOff262bUNx8i1bzCOQrzjXxw3JlU93paosDdpbE/edit?usp=sharing"
+DRIVE_URL = "https://drive.google.com/drive/folders/1MoGZVGhnEvv-sBwwivd9mIeU-Tybu8uL"
 
 icon_url = "https://cdn-icons-png.flaticon.com/512/814/814513.png" 
 st.set_page_config(page_title="GeoSense by Sahan", page_icon=icon_url, layout="centered")
 
-# --- 2. IMAGES FROM IMGBB ---
+# --- 2. IMAGES (FB COVER & IMGBB GALLERY) ---
+# ⚠️ මචං, මෙන්න මේ පල්ලෙහා තියෙන ලින්ක් එක වෙනුවට ඔයා FB එකෙන් ගත්ත Cover Image ලින්ක් එක දාන්න:
+FB_COVER_IMAGE_URL = "https://i.ibb.co/HLRrxp3n/TIF00958.jpg" 
+
 img_gallery_1 = "https://i.ibb.co/HLRrxp3n/TIF00958.jpg"
 img_gallery_2 = "https://i.ibb.co/SX4KBHF4/TIF00946.jpg"
 img_gallery_3 = "https://i.ibb.co/XxjWgkvy/TIF00721.jpg"
@@ -36,7 +40,9 @@ DISTRICT_DATA = {
 
 MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
-SAHAN_WHATSAPP_LINK = "https://wa.me/message/OCRVAFUSEYPYM1"
+# --- Smart WhatsApp Link Generation with Pre-filled Message ---
+DEFAULT_MSG = urllib.parse.quote("Hello Sir, I am using the GeoSense portal and I would like to know more details about the Geography classes.")
+SAHAN_WHATSAPP_LINK = f"https://wa.me/94717123334?text={DEFAULT_MSG}"
 
 def is_valid_phone(number):
     return bool(re.match(r"^0[0-9]{9}$", str(number)))
@@ -67,7 +73,7 @@ st.markdown("""
         background-size: cover; background-attachment: fixed;
     }
     
-    .main-title { font-family: 'Poppins', sans-serif; color: #0f4c5c; text-align: center; font-size: clamp(34px, 6vw, 55px); font-weight: 700; margin-top: -10px; }
+    .main-title { font-family: 'Poppins', sans-serif; color: #0f4c5c; text-align: center; font-size: clamp(34px, 6vw, 55px); font-weight: 700; margin-top: 10px; }
     .sub-title { font-family: 'Poppins', sans-serif; color: #e36414; text-align: center; font-size: clamp(13px, 3vw, 17px); font-weight: 600; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 1.5px; }
     .stMarkdown, p, label, .stSelectbox, .stTextInput { font-family: 'Poppins', sans-serif !important; font-weight: 400 !important; color: #2b2d42 !important; }
     
@@ -92,8 +98,8 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 6. BRANDING HEADER ---
-st.markdown(f'<div style="display: flex; justify-content: center; margin-bottom: 10px;"><img src="{icon_url}" width="65"></div>', unsafe_allow_html=True)
+# --- 6. BRANDING HEADER WITH FB COVER IMAGE ---
+st.image(FB_COVER_IMAGE_URL, use_container_width=True, style="border-radius: 16px; margin-bottom: 15px;")
 st.markdown('<p class="main-title">GeoSense <span style="color:#e36414; font-weight:400;">by Sahan</span></p>', unsafe_allow_html=True)
 st.markdown('<p class="sub-title">Guiding the next Generation of Geographers</p>', unsafe_allow_html=True)
 
@@ -208,15 +214,14 @@ with menu[2]:
                                                          f"👤 Student: {s_name}\n"
                                                          f"🎓 Stream Batch: {s_batch}\n"
                                                          f"📅 Target Month: {p_month}\n"
-                                                         f"💰 Logged Value: LKR {p_amount}\n\n"
-                                                         f"Sir, I have submitted the payment info. Sending the slip snapshot now.")
+                                                         f"💰 Logged Value: LKR {p_amount}")
                                             
                             new_pay = pd.DataFrame([{"Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Name": s_name, "Phone_Number": pay_phone, "Batch": s_batch, "Month": p_month, "Amount": p_amount, "Status": "Paid"}])
                             df_pays_hist = conn.read(url=DB_URL, worksheet="Payments", ttl=0)
                             conn.create(url=DB_URL, worksheet="Payments", data=pd.concat([df_pays_hist, new_pay], ignore_index=True))
                             
                             st.markdown(f'<div class="paid-badge">Transaction Logged Successfully! ✅</div>', unsafe_allow_html=True)
-                            st.link_button("📲 Submit Deposit Slip to Sir", f"{SAHAN_WHATSAPP_LINK}?text={pay_txt}")
+                            st.link_button("📲 Submit Deposit Slip to Sir", f"https://wa.me/94717123334?text={pay_txt}")
             else:
                 st.error("❌ Authentication Error: This phone footprint does not exist on our servers.")
 
@@ -250,7 +255,7 @@ with menu[5]:
                 
                 if 'Access' in user.columns and str(user.iloc[0]['Access']).strip().lower() == 'allow':
                     st.success(f"🔓 Access Granted! Welcome {s_name}. Cloud sync active.")
-                    st.link_button("📥 Open Cloud Vault (Notes & Resources)", "https://drive.google.com/drive/folders/1MoGZVGhnEvv-sBwwivd9mIeU-Tybu8uL")
+                    st.link_button("📥 Open Cloud Vault (Notes & Resources)", DRIVE_URL)
                 else:
                     st.error("⏳ Security Approval Pending: Your teacher needs to manually whitelist your access profile parameters.")
                     req_msg = urllib.parse.quote(f"*Resource Vault Whitelist Request - GeoSense*\n\n"
@@ -258,7 +263,7 @@ with menu[5]:
                                                  f"🎓 Target Batch Node: {s_batch}\n"
                                                  f"📱 Comms Link ID: {tute_phone}\n\n"
                                                  f"Sir, please run a verification check on my logs and authorize cloud vault access keys.")
-                    st.link_button("📲 Query Teacher for Whitelist Access", f"{SAHAN_WHATSAPP_LINK}?text={req_msg}")
+                    st.link_button("📲 Query Teacher for Whitelist Access", f"https://wa.me/94717123334?text={req_msg}")
             else:
                 st.error("❌ Identification ID not verified on database servers.")
 
