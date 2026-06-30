@@ -1,188 +1,332 @@
 import streamlit as st
+from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime
-import streamlit_folium as st_folium
-import folium
+import urllib.parse
+import re
 
-# ==========================================
-# 🛠️ 3 පියවර: කෝඩ් එක ඇතුළේ වෙනස් කළ යුතු තැන් (Code Customization)
-# ==========================================
+# --- 1. CONFIGURATION & DIRECT DB LINK ---
+# Your exact Google Sheet URL
+DB_URL = "https://docs.google.com/spreadsheets/d/1XByjOff262bUNx8i1bzCOQrzjXxw3JlU93paosDdpbE/edit?usp=sharing"
 
-# 1. පින්තූර ලින්ක්ස් (ImgBB Direct Links)
-BANNER_HOME = "https://i.ibb.co/your-home-banner-link.jpg"
-BANNER_REG = "https://i.ibb.co/your-reg-banner-link.jpg"
-BANNER_MAP = "https://i.ibb.co/your-map-banner-link.jpg"
-BANNER_CLASS = "https://i.ibb.co/your-class-banner-link.jpg"
+icon_url = "https://cdn-icons-png.flaticon.com/512/814/814513.png" # Professional Globe Icon
+st.set_page_config(page_title="GeoSense by Sahan", page_icon=icon_url, layout="centered")
 
-# 2. Page Title & Class Details
-PAGE_TITLE = "Geo-Scholar - Geography Portal"
-CLASS_NAME = "භූගෝල විද්‍යාව (Geography)"
-TEACHER_NAME = "සහන් විතානගේ"  # මෙතනට යාලුවගේ නම දාන්න
+# --- 2. IMAGES FROM IMGBB ---
+img_gallery_1 = "https://i.ibb.co/HLRrxp3n/TIF00958.jpg"
+img_gallery_2 = "https://i.ibb.co/SX4KBHF4/TIF00946.jpg"
+img_gallery_3 = "https://i.ibb.co/XxjWgkvy/TIF00721.jpg"
 
-# 3. WhatsApp සහ Zoom විස්තර
-WHATSAPP_2026 = "https://chat.whatsapp.com/example2026"
-WHATSAPP_2027 = "https://chat.whatsapp.com/example2027"
-WHATSAPP_2028 = "https://chat.whatsapp.com/example2028"
+# --- 3. CONSTANTS & UTILITIES ---
+WHATSAPP_GROUPS = {
+    "2026 A/L": "https://chat.whatsapp.com/CZcifW6qs0KCOrdX46n0E9",
+    "2027 A/L": "https://chat.whatsapp.com/ElrGd68bvXDGEYw5XBEb1f",
+    "2028 A/L": "https://chat.whatsapp.com/JZdWvJT6gX6J0uqUFNvTuK"
+}
 
-ZOOM_ID = "123 456 7890"
-ZOOM_PASSCODE = "Geo2028"
-ZOOM_LINK = "https://zoom.us/j/example"
+DISTRICT_DATA = {
+    "Colombo": {"lat": 6.9271, "lon": 79.8612}, "Kandy": {"lat": 7.2906, "lon": 80.6337},
+    "Galle": {"lat": 6.0535, "lon": 80.2210}, "Matara": {"lat": 5.9549, "lon": 80.5550},
+    "Kurunegala": {"lat": 7.4863, "lon": 80.3647}, "Anuradhapura": {"lat": 8.3114, "lon": 80.4037},
+    "Ratnapura": {"lat": 6.7056, "lon": 80.3847}, "Kalutara": {"lat": 6.5854, "lon": 79.9607},
+    "Badulla": {"lat": 6.9934, "lon": 81.0550}, "Nuwara Eliya": {"lat": 6.9497, "lon": 80.7891},
+    "Hambantota": {"lat": 6.1246, "lon": 81.1185}, "Puttalam": {"lat": 8.0330, "lon": 79.8250},
+    "Kegalle": {"lat": 7.2513, "lon": 80.3464}, "Matale": {"lat": 7.4675, "lon": 80.6234},
+    "Polonnaruwa": {"lat": 7.9397, "lon": 81.0036}, "Monaragala": {"lat": 6.8724, "lon": 81.3507},
+    "Ampara": {"lat": 7.2842, "lon": 81.6747}, "Trincomalee": {"lat": 8.5711, "lon": 81.2335},
+    "Batticaloa": {"lat": 7.7302, "lon": 81.6747}, "Vavuniya": {"lat": 8.7542, "lon": 80.4982},
+    "Mannar": {"lat": 8.9810, "lon": 79.9044}, "Mullaitivu": {"lat": 9.2671, "lon": 80.8142},
+    "Kilinochchi": {"lat": 9.3803, "lon": 80.4037}, "Jaffna": {"lat": 9.6615, "lon": 80.0255}
+}
 
-# 4. දුරකථන අංකය (WhatsApp Format: 947xxxxxxxx)
-SUPPORT_PHONE = "94771234567" 
+MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
-# 5. Google Drive (Tutes) සහ Calendar ලින්ක්ස්
-DRIVE_LINK = "https://drive.google.com/drive/folders/example"
-CALENDAR_EMBED = "https://calendar.google.com/calendar/embed?src=en.lk%23holiday%40group.v.calendar.google.com" # දැනට ලංකාවේ නිවාඩු දින දින දර්ශනය
+def is_valid_phone(number):
+    return bool(re.match(r"^0[0-9]{9}$", str(number)))
 
-# 6. Admin Password
-ADMIN_PASSWORD = "GeoAdmin@2028"
+def format_sheet_phone(num):
+    if pd.isna(num): return ""
+    cleaned = str(num).split('.')[0].strip()
+    if len(cleaned) == 9 and cleaned.startswith('7'): return "0" + cleaned
+    return cleaned
 
-# ==========================================
-# ⚙️ පද්ධතියේ ක්‍රියාකාරී කෝඩ් එක (Logic) - මේවා වෙනස් කරන්න එපා
-# ==========================================
+# --- 4. GOOGLE SHEET CONNECTION ---
+conn = st.connection("gsheets", type=GSheetsConnection)
 
-st.set_page_config(page_title=PAGE_TITLE, page_icon="🗺️", layout="wide")
-
-# Google Sheet එක සම්බන්ධ කිරීම (Secrets මඟින්)
 try:
-    gsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
-    # Sheet IDs (Tab names අනුව)
-    sheet_url_students = gsheet_url.replace("/edit?usp=sharing", "/gviz/tq?tqx=out:csv&sheet=Student_DB")
-    sheet_url_payments = gsheet_url.replace("/edit?usp=sharing", "/gviz/tq?tqx=out:csv&sheet=Payments")
+    df_global_students = conn.read(url=DB_URL, worksheet="Student_DB", ttl=0)
 except Exception as e:
-    st.error("Error: Google Sheet Secrets සෙට් කර නැත! කරුණාකර 4 වන පියවර බලන්න.")
-    st.stop()
+    st.error("⚠️ Unable to sync with database. Please verify configuration.")
+    df_global_students = pd.DataFrame()
 
-# Sidebar Navigation
-st.sidebar.title(f"📌 {TEACHER_NAME} සර්ගේ පන්තිය")
-page = st.sidebar.radio("යන්න මෙතනින්:", ["ඇතුළත් වීම (Home)", "නව ලියාපදිංචිය (Register)", "පන්ති කාමරය (Classroom)", "ගෙවීම් තොරතුරු (Payments)", "සිසුන්ගේ සිතියම (Student Map)", "පරිපාලන පැනලය (Admin)"])
+# --- 5. PREMIUM UI CUSTOMIZATION (THEMING) ---
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+    
+    .stApp { 
+        background: linear-gradient(rgba(244, 248, 249, 0.92), rgba(244, 248, 249, 0.92)), 
+        url("https://www.transparenttextures.com/patterns/gplay.png");
+        background-size: cover; background-attachment: fixed;
+    }
+    
+    .main-title { font-family: 'Poppins', sans-serif; color: #0f4c5c; text-align: center; font-size: clamp(34px, 6vw, 55px); font-weight: 700; margin-top: -10px; }
+    .sub-title { font-family: 'Poppins', sans-serif; color: #e36414; text-align: center; font-size: clamp(13px, 3vw, 17px); font-weight: 600; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 1.5px; }
+    .stMarkdown, p, label, .stSelectbox, .stTextInput { font-family: 'Poppins', sans-serif !important; font-weight: 400 !important; color: #2b2d42 !important; }
+    
+    .stTabs [data-baseweb="tab-list"] { justify-content: center; gap: 10px; }
+    .stTabs [data-baseweb="tab"] { 
+        background-color: rgba(215, 228, 230, 0.7); border-radius: 8px 8px 0px 0px; padding: 10px 18px; 
+        font-family: 'Poppins', sans-serif; font-weight: 600; color: #0f4c5c;
+    }
+    
+    .stButton>button { width: 100%; background: linear-gradient(90deg, #0f4c5c 0%, #118ab2 100%); color: white; border-radius: 12px; height: 50px; font-weight: 600; border: none; font-family: 'Poppins', sans-serif; transition: 0.3s; }
+    .stButton>button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(15,76,92,0.3); }
+    
+    .bio-card { background: #ffffff; border-radius: 16px; padding: 25px; box-shadow: 0 8px 25px rgba(15, 76, 92, 0.06); border: 1px solid #e2eaeb; margin-bottom: 25px; }
+    .profile-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); margin-bottom: 20px; border-left: 5px solid #0f4c5c; }
+    .paid-badge { background-color: #2ec4b6; color: white; padding: 15px; border-radius: 12px; text-align: center; font-weight: bold; margin: 15px 0; }
+    
+    /* --- SMART SOCIAL MEDIA ICONS STYLE --- */
+    .social-container { display: flex; justify-content: center; gap: 25px; margin: 20px 0; }
+    .social-icon { width: 45px; height: 45px; transition: transform 0.3s ease, filter 0.3s ease; cursor: pointer; }
+    .social-icon:hover { transform: scale(1.2); filter: drop-shadow(0px 5px 8px rgba(0,0,0,0.15)); }
+    
+    #MainMenu, footer, header {visibility: hidden;}
+    </style>
+    """, unsafe_allow_html=True)
 
-# ----------------- HOME PAGE -----------------
-if page == "ඇතුළත් වීම (Home)":
-    st.image(BANNER_HOME, use_container_width=True)
-    st.title(f"👋 සාදරයෙන් පිළිගන්නවා! {CLASS_NAME}")
-    st.subheader(f"මෙහෙයවීම: {TEACHER_NAME} (Lecturer)")
-    
-    st.markdown(f"""
-    ඔබේ භූගෝල විද්‍යා අධ්‍යාපන ගමන වඩාත් තාක්ෂණික සහ පහසු එකක් කිරීමට මෙම ඩිජිටල් පද්ධතිය නිර්මාණය කර ඇත. 
-    පහත සේවාවන් ලබා ගැනීමට වම්පස ඇති **Navigation Menu** එක භාවිතා කරන්න:
-    * **Register:** පන්තියට අලුතින්ම එකතු වන සිසුන් සඳහා.
-    * **Classroom:** Zoom ලින්ක්, Tutes සහ WhatsApp ගෲප් වලට සම්බන්ධ වීමට.
-    * **Payments:** මාසික පන්ති ගාස්තු ගෙවීම් වාර්තා ඇතුළත් කිරීමට.
-    
-    📞 ඕනෑම ගැටලුවකදී සම්බන්ධ කරගන්න: [WhatsApp හරහා මැසේජ් කරන්න](https://wa.me/{SUPPORT_PHONE})
-    """)
+# --- 6. BRANDING HEADER ---
+st.markdown(f'<div style="display: flex; justify-content: center; margin-bottom: 10px;"><img src="{icon_url}" width="65"></div>', unsafe_allow_html=True)
+st.markdown('<p class="main-title">GeoSense <span style="color:#e36414; font-weight:400;">by Sahan</span></p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-title">Guiding the next Generation of Geographers</p>', unsafe_allow_html=True)
 
-# ----------------- REGISTRATION PAGE -----------------
-elif page == "නව ලියාපදිංචිය (Register)":
-    st.image(BANNER_REG, use_container_width=True)
-    st.title("📝 සිසුවා ලියාපදිංචි කිරීම")
-    st.write("පහත පෝරමය නිවැරදිව පුරවා පද්ධතියට ඇතුළත් වන්න.")
-    
-    with st.form("reg_form", clear_on_submit=True):
-        name = st.text_input("සම්පූර්ණ නම (Name in Full):")
-        phone = st.text_input("දුරකථන අංකය (WhatsApp Number):")
-        batch = st.selectbox("කණ්ඩායම (Batch):", ["2026 A/L", "2027 A/L", "2028 A/L"])
-        district = st.text_input("දිස්ත්‍රික්කය (District):")
+# --- 7. APPS TABS NAVIGATION ---
+menu = st.tabs(["🌍 Home", "📝 Registration", "💳 Fees & Payments", "📍 Student Map", "📅 Schedule", "📚 Resources"])
+
+# --- TAB 1: HOME (ABOUT THE LECTURER & ACADEMIC HUB) ---
+with menu[0]:
+    # Dynamic Profile Layout
+    col_img, col_det = st.columns([2, 3])
+    with col_img:
+        st.image(img_gallery_1, caption="Sahan Vitanage", use_container_width=True)
+    with col_det:
+        st.markdown("""
+        <div class="bio-card" style="padding:15px; height:100%;">
+            <h3 style="color: #0f4c5c; margin-top:0;">Meet Your Lecturer</h3>
+            <p style="font-size: 15px; line-height: 1.6; margin-bottom:8px;">
+                <b>Sahan Vitanage</b><br>
+                <span style="color: #e36414; font-weight: 600;">GIS Expert & Educator</span><br>
+                BSc. Honors in Geographical Information Science<br>
+                <i>University of Peradeniya, Sri Lanka.</i>
+            </p>
+            <p style="font-size: 13.5px; color: #555; margin-top:0;">
+                Bringing contemporary Geospatial Technology & GIS Expertise straight into Advanced Level Geography classrooms to engineer a smart learning landscape.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        st.write("📍 සිතියමේ ඔබව පෙන්වීමට ආසන්න ලක්ෂ්‍යය (Latitude & Longitude) ඇතුළත් කරන්න:")
-        lat = st.number_input("Latitude (උදා: 7.2906)", format="%.4f", value=7.2906)
-        lon = st.number_input("Longitude (උදා: 80.6337)", format="%.4f", value=80.6337)
+    st.write("")
+    st.markdown("### 🎓 Academic & Convocation Gallery")
+    col_g1, col_g2 = st.columns(2)
+    with col_g1:
+        st.image(img_gallery_2, caption="Excellence in Geospatial Science", use_container_width=True)
+    with col_g2:
+        st.image(img_gallery_3, caption="University of Peradeniya Convocation", use_container_width=True)
         
-        submitted = st.form_submit_button("ලියාපදිංචි වන්න")
-        if submitted:
-            if name and phone and district:
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                # මෙතනදී කෙලින්ම ගූගල් ශීට් එකට ලියන්න නම් Google Forms/Apps Script එකක් ඕන වෙනවා. 
-                # දැනට Streamlit එකෙන් පෙන්වනවා. (Apps script එක පසුව සෙට් කරමු)
-                st.success(f"🎉 ස්තූතියි {name}! ඔබ සාර්ථකව ලියාපදිංචි වුණා. (කරුණාකර මෙම දත්ත පරිපාලක වෙත යවන්න)")
-                st.info(f"දත්ත: {timestamp}, {name}, {phone}, {batch}, {district}, {lat}, {lon}, Pending")
-            else:
-                st.warning("කරුණාකර සියලුම විස්තර ඇතුළත් කරන්න!")
+    # Smart Social Media Media Hub Section (Hover Icons)
+    st.markdown("<hr style='border: 1px solid #e2eaeb;'>", unsafe_allow_html=True)
+    st.markdown("<h4 style='text-align:center; color:#0f4c5c;'>Connect with GeoSense Community</h4>", unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div class="social-container">
+        <a href="https://youtube.com/@geosensebysahan?si=8aCYZsTRqDo7bT0r" target="_blank">
+            <img src="https://cdn-icons-png.flaticon.com/512/3670/3670147.png" class="social-icon" alt="YouTube">
+        </a>
+        <a href="https://www.facebook.com/share/1E3uyMWtYq/" target="_blank">
+            <img src="https://cdn-icons-png.flaticon.com/512/5968/5968764.png" class="social-icon" alt="Facebook">
+        </a>
+        <a href="https://www.tiktok.com/@sahan.vithanage7?_r=1&_t=ZS-97dvOpvuysT" target="_blank">
+            <img src="https://cdn-icons-png.flaticon.com/512/3046/3046124.png" class="social-icon" alt="TikTok">
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.write("")
+    contact_msg = urllib.parse.quote("Hello Sir, I'm reaching out via the GeoSense portal to inquire about Geography classes.")
+    st.link_button("📲 Chat Directly on WhatsApp Business", f"https://wa.me/94779316692?text={contact_msg}")
 
-# ----------------- CLASSROOM PAGE -----------------
-elif page == "පන්ති කාමරය (Classroom)":
-    st.image(BANNER_CLASS, use_container_width=True)
-    st.title("📚 මගේ පන්ති කාමරය")
+# --- TAB 2: REGISTRATION FORM ---
+with menu[1]:
+    st.markdown("### 📝 Create Student Account")
+    check_phone = st.text_input("Enter your WhatsApp Mobile Number", key="reg_check", max_chars=10, placeholder="e.g., 0771234567")
     
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("🎥 සජීවී Zoom පන්තිය")
-        st.write(f"**Meeting ID:** {ZOOM_ID}")
-        st.write(f"**Passcode:** {ZOOM_PASSCODE}")
-        st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ") # නිකන් Demo එකක්, ඕන නම් අයින් කරන්න
-        st.markdown(f'<a href="{ZOOM_LINK}" target="_blank"><button style="background-color:#2D8CFF;color:white;padding:10px;border:none;border-radius:5px;width:100%;">Zoom පන්තියට සම්බන්ධ වන්න</button></a>', unsafe_allow_text=True)
+    if check_phone and is_valid_phone(check_phone):
+        df_students = df_global_students.copy() if not df_global_students.empty else pd.DataFrame()
+        existing_numbers = df_students['Phone_Number'].apply(format_sheet_phone).values if not df_students.empty and 'Phone_Number' in df_students.columns else []
         
-        st.subheader("📁 නිබන්ධන (Tutes & Notes)")
-        st.markdown(f'<a href="{DRIVE_LINK}" target="_blank"><button style="background-color:#198754;color:white;padding:10px;border:none;border-radius:5px;width:100%;">Google Drive එකට යන්න</button></a>', unsafe_allow_text=True)
-
-    with col2:
-        st.subheader("💬 WhatsApp සමූහයන් (Groups)")
-        st.markdown(f"[🟢 2026 Batch WhatsApp Group]({WHATSAPP_2026})")
-        st.markdown(f"[🟢 2027 Batch WhatsApp Group]({WHATSAPP_2027})")
-        st.markdown(f"[🟢 2028 Batch WhatsApp Group]({WHATSAPP_2028})")
-        
-        st.subheader("📅 පන්ති කාලසටහන (Calendar)")
-        st.markdown(f'<iframe src="{CALENDAR_EMBED}" style="border: 0" width="100%" height="250" frameborder="0" scrolling="no"></iframe>', unsafe_allow_text=True)
-
-# ----------------- PAYMENTS PAGE -----------------
-elif page == "ගෙවීම් තොරතුරු (Payments)":
-    st.title("💳 මාසික පන්ති ගාස්තු තොරතුරු")
-    st.write("ඔබේ මාසික ගෙවීම් රිසිට්පත් විස්තර මෙතැනින් ඇතුළත් කරන්න.")
-    
-    with st.form("payment_form", clear_on_submit=True):
-        p_name = st.text_input("සිසුවාගේ නම:")
-        p_phone = st.text_input("දුරකථන අංකය:")
-        p_batch = st.selectbox("කණ්ඩායම:", ["2026 A/L", "2027 A/L", "2028 A/L"])
-        p_month = st.selectbox("ගෙවීම් කළ මාසය:", ["ජනවාරි", "පෙබරවාරි", "මාර්තු", "අප්‍රේල්", "මැයි", "ජූනි", "ජූලි", "අගෝස්තු", "සැප්තැම්බර්", "ඔක්තෝබර්", "නොවැම්බර්", "දෙසැම්බර්"])
-        p_amount = st.text_input("මුදල (Rs.):", value="2000")
-        
-        st.info("💡 දැනට පද්ධතිය පරීක්ෂණ මට්ටමේ පවතින බැවින් ගෙවීම් තහවුරු කිරීමට රිසිට්පත සර්ගේ WhatsApp එකට දාන්න.")
-        p_submitted = st.form_submit_button("ගෙවීම් විස්තර ඇතුළත් කරන්න")
-        if p_submitted:
-            st.success("👍 ඔබේ ගෙවීම් විස්තර ලැබුණා. පරිපාලක විසින් එය පරීක්ෂා කර සක්‍රීය කරනු ඇත.")
-
-# ----------------- MAP PAGE -----------------
-elif page == "සිසුන්ගේ සිතියම (Student Map)":
-    st.image(BANNER_MAP, use_container_width=True)
-    st.title("🗺️ අපේ පන්තියේ සිසුන් ලංකාව වටා")
-    st.write("පන්තියේ සිසුන් විසිරී සිටින ආකාරය දැක්වෙන සිතියම (ලියාපදිංචි දත්ත අනුව).")
-    
-    # මැප් එක මැද ලංකාවට සෙට් කිරීම
-    m = folium.Map(location=[7.8731, 80.7718], zoom_start=7)
-    
-    # නිදර්ශන ලක්ෂ්‍යයන් කිහිපයක් (Demo data)
-    folium.Marker([7.2906, 80.6337], popup="Kandy Center", icon=folium.Icon(color="red", icon="info-sign")).add_to(m)
-    folium.Marker([6.9271, 79.8612], popup="Colombo Student", icon=folium.Icon(color="blue")).add_to(m)
-    
-    st_folium.st_folium(m, width=1000, height=500)
-
-# ----------------- ADMIN PANEL -----------------
-elif page == "පරිපාලන පැනලය (Admin)":
-    st.title("🔒 පරිපාලන පැනලය (Admin Panel)")
-    
-    pwd = st.text_input("මුරපදය ඇතුළත් කරන්න (Password):", type="password")
-    if pwd == ADMIN_PASSWORD:
-        st.success("Access Granted! සාදරයෙන් පිළිගන්නවා සර්.")
-        
-        tab1, tab2 = st.tabs(["සිසුන්ගේ දත්ත (Students)", "ගෙවීම් දත්ත (Payments)"])
-        
-        with tab1:
-            st.subheader("👥 ලියාපදිංචි වී ඇති සිසුන්")
-            try:
-                df_students = pd.read_csv(sheet_url_students)
-                st.dataframe(df_students)
-            except:
-                st.warning("Google Sheet එකේ 'Student_DB' කියන Tab එක සොයාගත නොහැක හෝ දත්ත නැත.")
+        if str(check_phone).strip() in existing_numbers:
+            st.warning("⚠️ Access Profile Alert: This phone number is already registered inside GeoSense!")
+        else:
+            with st.form("reg_form", clear_on_submit=True):
+                name = st.text_input("Full Student Name")
+                batch = st.selectbox("Academic Year (Batch)", list(WHATSAPP_GROUPS.keys()))
+                dist = st.selectbox("Residential District", list(DISTRICT_DATA.keys()))
                 
-        with tab2:
-            st.subheader("💰 ලැබී ඇති ගෙවීම්")
-            try:
-                df_payments = pd.read_csv(sheet_url_payments)
-                st.dataframe(df_payments)
-            except:
-                st.warning("Google Sheet එකේ 'Payments' කියන Tab එක සොයාගත නොහැක හෝ දත්ත නැත.")
-    elif pwd != "":
-        st.error("වැරදි මුරපදයක්! නැවත උත්සාහ කරන්න.")
+                if st.form_submit_button("Submit Registration Profile"):
+                    if name:
+                        new_student = pd.DataFrame([{
+                            "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
+                            "Name": name, "Phone_Number": check_phone, "Batch": batch, "District": dist, 
+                            "lat": DISTRICT_DATA[dist]["lat"], "lon": DISTRICT_DATA[dist]["lon"], 
+                            "Access": "Don't Allow", "Group_Status": "Pending"
+                        }])
+                        conn.update(url=DB_URL, worksheet="Student_DB", data=pd.concat([df_students, new_student], ignore_index=True))
+                        st.success("Successfully Registered onto Database Server!")
+                        st.link_button("👉 Step 2: Now Join Official WhatsApp Group", WHATSAPP_GROUPS[batch])
+
+# --- TAB 3: FEES & PAYMENTS SUBMISSION ---
+with menu[2]:
+    st.markdown("""
+    <div class="bio-card" style="border: 1.5px dashed #118ab2;">
+        <h4 style="color: #0f4c5c; margin-top:0;">🏦 Class Fee Bank Account Matrix:</h4>
+        <p style='margin: 5px 0; font-size: 15px;'><b>Account Number:</b> <span style='color: #e36414; font-size: 18px; font-weight: bold;'>042 2 001 9 0052407</span></p>
+        <p style='margin: 5px 0;'><b>Account Name:</b> H.M Buddhika Sampath Gunathilaka</p>
+        <p style='margin: 5px 0;'><b>Banking Corporate:</b> People's Bank</p>
+        <p style='margin: 5px 0;'><b>Clearing Branch:</b> Kekirawa</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    pay_phone = st.text_input("Enter Registered WhatsApp Number (07xxxxxxxx)", key="pay_check", max_chars=10, placeholder="e.g., 0771234567")
+    if pay_phone and is_valid_phone(pay_phone):
+        df_reg = df_global_students.copy() if not df_global_students.empty else pd.DataFrame()
+        if not df_reg.empty and 'Phone_Number' in df_reg.columns:
+            df_reg['formatted_phone'] = df_reg['Phone_Number'].apply(format_sheet_phone)
+            user = df_reg[df_reg['formatted_phone'] == str(pay_phone).strip()]
+            
+            if not user.empty:
+                s_name, s_batch = user.iloc[0]['Name'], user.iloc[0]['Batch']
+                st.markdown(f'<div class="profile-card"><h4>{s_name}</h4><p>Batch Stream: {s_batch}</p></div>', unsafe_allow_html=True)
+                
+                is_pending = True
+                if 'Group_Status' in user.columns and not pd.isna(user.iloc[0]['Group_Status']):
+                    if str(user.iloc[0]['Group_Status']).strip().lower() == 'joined':
+                        is_pending = False
+                
+                if is_pending:
+                    st.error("🔒 Security Hold: System detects you haven't joined the official WhatsApp group. Please join to activate financial forms.")
+                    st.link_button("🟢 Join WhatsApp Stream", WHATSAPP_GROUPS[s_batch])
+                else:
+                    with st.form("pay_form", clear_on_submit=True):
+                        p_month = st.selectbox("Select Target Billing Month", MONTHS)
+                        p_amount = st.text_input("Transacted Amount (LKR)")
+                        
+                        if st.form_submit_button("Upload and Log Payment"):
+                            if p_amount:
+                                pay_txt = urllib.parse.quote(f"*Class Fee Log Receipt - GeoSense*\n\n"
+                                                             f"👤 Student: {s_name}\n"
+                                                             f"🎓 Stream Batch: {s_batch}\n"
+                                                             f"📅 Target Month: {p_month}\n"
+                                                             f"💰 Logged Value: LKR {p_amount}\n\n"
+                                                             f"(I am transmitting my bank transaction slip layout via WhatsApp.)")
+                                
+                                new_pay = pd.DataFrame([{"Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Name": s_name, "Phone_Number": pay_phone, "Batch": s_batch, "Month": p_month, "Amount": p_amount, "Status": "Paid"}])
+                                df_pays_hist = conn.read(url=DB_URL, worksheet="Payments", ttl=0)
+                                conn.update(url=DB_URL, worksheet="Payments", data=pd.concat([df_pays_hist, new_pay], ignore_index=True))
+                                
+                                st.markdown(f'<div class="paid-badge">Transaction Logged Successfully! ✅</div>', unsafe_allow_html=True)
+                                st.link_button("📲 Submit Deposit Slip Now", f"https://wa.me/94779316692?text={pay_txt}")
+            else:
+                st.error("❌ Authentication Error: This phone footprint does not exist on our servers.")
+
+# --- TAB 4: GIS INTERACTIVE STUDENT MAP ---
+with menu[3]:
+    st.markdown("### 📍 Live Geospatial Student GIS Density Map")
+    st.write("Leveraging built-in GIS properties to showcase the live island-wide registration footprint.")
+    if not df_global_students.empty and 'lat' in df_global_students.columns and 'lon' in df_global_students.columns:
+        st.map(df_global_students[['lat', 'lon']].dropna(), color="#0f4c5c")
+    else:
+        st.info("Awaiting live GIS node coordination inputs.")
+
+# --- TAB 5: LECTURE TIMETABLE CALENDAR ---
+with menu[4]:
+    st.markdown("### 📅 Live Academic Operational Schedule")
+    st.components.v1.iframe("https://calendar.google.com/calendar/embed?src=buddhika1999b%40gmail.com", height=500)
+
+# --- TAB 6: PREMIUM LEARNING RESOURCES ---
+with menu[5]:
+    st.markdown("### 📚 Strategic Geography Analytics, Notes & Mapping Frameworks")
+    tute_phone = st.text_input("Enter WhatsApp Authentication ID to access Cloud Assets", key="tute_check", max_chars=10, placeholder="e.g., 0771234567")
+    
+    if tute_phone and is_valid_phone(tute_phone):
+        df_reg = df_global_students.copy() if not df_global_students.empty else pd.DataFrame()
+        if not df_reg.empty and 'Phone_Number' in df_reg.columns:
+            df_reg['formatted_phone'] = df_reg['Phone_Number'].apply(format_sheet_phone)
+            user = df_reg[df_reg['formatted_phone'] == str(tute_phone).strip()]
+            
+            if not user.empty:
+                s_name, s_batch = user.iloc[0]['Name'], user.iloc[0]['Batch']
+                
+                is_pending = True
+                if 'Group_Status' in user.columns and not pd.isna(user.iloc[0]['Group_Status']):
+                    if str(user.iloc[0]['Group_Status']).strip().lower() == 'joined':
+                        is_pending = False
+                
+                if is_pending:
+                    st.error("🔒 Security Hold: Access Denied. Join the verified group channel to release access keys.")
+                    st.link_button("🟢 Join Group Node", WHATSAPP_GROUPS[s_batch])
+                else:
+                    if 'Access' in user.columns and str(user.iloc[0]['Access']).strip().lower() == 'allow':
+                        st.success(f"🔓 Access Granted! Welcome {s_name}. Cloud sync active.")
+                        st.link_button("📥 Open Cloud Vault (Notes & Resources)", "https://drive.google.com/drive/folders/1MoGZVGhnEvv-sBwwivd9mIeU-Tybu8uL")
+                    else:
+                        st.error("⏳ Security Approval Pending: Your teacher needs to manually whitelist your access profile parameters.")
+                        req_msg = urllib.parse.quote(f"*Resource Vault Whitelist Request - GeoSense*\n\n"
+                                                     f"👤 Student Identity: {s_name}\n"
+                                                     f"🎓 Target Batch Node: {s_batch}\n"
+                                                     f"📱 Comms Link ID: {tute_phone}\n\n"
+                                                     f"Sir, please run a verification check on my logs and authorize cloud vault access keys.")
+                        st.link_button("📲 Query Teacher for Whitelist Access", f"https://wa.me/94779316692?text={req_msg}")
+            else:
+                st.error("❌ Identification ID not verified on database servers.")
+
+# --- ⚙️ TEACHER ADMINISTRATION FRAMEWORK ---
+st.divider()
+with st.expander("⚙️ GeoSense Educational Matrix Control Panel (Staff Only)"):
+    admin_pw = st.text_input("Provide Administrative Authorization Key", type="password", key="secret_admin_pw")
+    if admin_pw == "admin123":
+        st.success("Admin Node Authenticated!")
+        df_admin = df_global_students.copy() if not df_global_students.empty else pd.DataFrame()
+        if not df_admin.empty:
+            if 'Group_Status' not in df_admin.columns: df_admin['Group_Status'] = 'Pending'
+            else: df_admin['Group_Status'] = df_admin['Group_Status'].fillna('Pending').astype(str).replace({'nan': 'Pending', '': 'Pending'})
+            
+            df_admin['formatted_phone'] = df_admin['Phone_Number'].apply(format_sheet_phone)
+            
+            st.markdown("### 📋 Student Validation Pipeline Management")
+            view_opt = st.radio("Pipeline Filters", ["All Node Registry Logs", "Awaiting Verification Logins Only"], horizontal=True)
+            display_df = df_admin if view_opt == "All Node Registry Logs" else df_admin[df_admin['Group_Status'] == 'Pending']
+            
+            if display_df.empty:
+                st.info("No matching identity data packets active on the workspace pipeline.")
+            else:
+                for idx, row in display_df.iterrows():
+                    col_info, col_status, col_btn = st.columns([3, 1, 1])
+                    current_status = row['Group_Status']
+                    
+                    col_info.write(f"👤 **{row['Name']}** ({row['Batch']}) - {row['formatted_phone']}")
+                    
+                    if current_status == 'Joined':
+                        col_status.markdown("<span style='color:#2ec4b6;font-weight:bold;'>Joined ✅</span>", unsafe_allow_html=True)
+                        if col_btn.button("Revoke Group Token", key=f"admin_p_{idx}"):
+                            df_admin.at[idx, 'Group_Status'] = 'Pending'
+                            df_admin_clean = df_admin.drop(columns=['formatted_phone'], errors='ignore')
+                            conn.update(url=DB_URL, worksheet="Student_DB", data=df_admin_clean)
+                            st.rerun()
+                    else:
+                        col_status.markdown("<span style='color:#e36414;font-weight:bold;'>Pending ❌</span>", unsafe_allow_html=True)
+                        if col_btn.button("Authorize Group Token", key=f"admin_j_{idx}"):
+                            df_admin.at[idx, 'Group_Status'] = 'Joined'
+                            df_admin_clean = df_admin.drop(columns=['formatted_phone'], errors='ignore')
+                            conn.update(url=DB_URL, worksheet="Student_DB", data=df_admin_clean)
+                            st.rerun()
