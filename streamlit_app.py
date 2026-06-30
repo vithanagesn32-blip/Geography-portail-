@@ -52,11 +52,11 @@ def format_sheet_phone(num):
     if len(cleaned) == 9 and cleaned.startswith('7'): return "0" + cleaned
     return cleaned
 
-# --- 4. GOOGLE SHEET CONNECTION ---
-conn = st.connection("gsheets", type=GSheetsConnection)
+# --- 4. GOOGLE SHEET CONNECTION (FIXED: Added global url default) ---
+conn = st.connection("gsheets", type=GSheetsConnection, url=DB_URL)
 
 try:
-    df_global_students = conn.read(url=DB_URL, worksheet="Student_DB", ttl=0)
+    df_global_students = conn.read(worksheet="Student_DB", ttl=0)
 except Exception as e:
     st.error("⚠️ Unable to sync with database. Please verify configuration.")
     df_global_students = pd.DataFrame()
@@ -97,7 +97,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 6. BRANDING HEADER WITH FB COVER IMAGE (FIXED ERROR) ---
+# --- 6. BRANDING HEADER WITH FB COVER IMAGE ---
 st.markdown(f"""
     <div style="display: flex; justify-content: center; margin-bottom: 15px;">
         <img src="{FB_COVER_IMAGE_URL}" style="width: 100%; border-radius: 16px; object-fit: cover; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
@@ -114,7 +114,7 @@ menu = st.tabs(["🌍 Home", "📝 Registration", "💳 Fees & Payments", "📍 
 with menu[0]:
     col_img, col_det = st.columns([2, 3])
     with col_img:
-        st.image(img_gallery_1, caption="Sahan Vitanage", use_container_width=True)
+        st.image(img_gallery_1, caption="Sahan Vitanage", width="stretch")
     with col_det:
         st.markdown("""
         <div class="bio-card" style="padding:15px; height:100%;">
@@ -135,9 +135,9 @@ with menu[0]:
     st.markdown("### 🎓 Academic & Convocation Gallery")
     col_g1, col_g2 = st.columns(2)
     with col_g1:
-        st.image(img_gallery_2, caption="Excellence in Geospatial Science", use_container_width=True)
+        st.image(img_gallery_2, caption="Excellence in Geospatial Science", width="stretch")
     with col_g2:
-        st.image(img_gallery_3, caption="University of Peradeniya Convocation", use_container_width=True)
+        st.image(img_gallery_3, caption="University of Peradeniya Convocation", width="stretch")
         
     st.markdown("<hr style='border: 1px solid #e2eaeb;'>", unsafe_allow_html=True)
     st.markdown("<h4 style='text-align:center; color:#0f4c5c;'>Connect with GeoSense Community</h4>", unsafe_allow_html=True)
@@ -184,8 +184,10 @@ with menu[1]:
                             "lat": DISTRICT_DATA[dist]["lat"], "lon": DISTRICT_DATA[dist]["lon"], 
                             "Access": "Don't Allow", "Group_Status": "Joined"
                         }])
-                        conn.create(url=DB_URL, worksheet="Student_DB", data=pd.concat([df_students, new_student], ignore_index=True))
+                        # FIX: Changed conn.create to conn.update and removed direct url param
+                        conn.update(worksheet="Student_DB", data=pd.concat([df_students, new_student], ignore_index=True))
                         st.success("Successfully Registered Onto GeoSense Database Server! 🎉")
+                        st.rerun()
 
 # --- TAB 3: FEES & PAYMENTS SUBMISSION ---
 with menu[2]:
@@ -221,8 +223,9 @@ with menu[2]:
                                                          f"💰 Logged Value: LKR {p_amount}")
                                             
                             new_pay = pd.DataFrame([{"Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Name": s_name, "Phone_Number": pay_phone, "Batch": s_batch, "Month": p_month, "Amount": p_amount, "Status": "Paid"}])
-                            df_pays_hist = conn.read(url=DB_URL, worksheet="Payments", ttl=0)
-                            conn.create(url=DB_URL, worksheet="Payments", data=pd.concat([df_pays_hist, new_pay], ignore_index=True))
+                            df_pays_hist = conn.read(worksheet="Payments", ttl=0)
+                            # FIX: Changed conn.create to conn.update and removed direct url param
+                            conn.update(worksheet="Payments", data=pd.concat([df_pays_hist, new_pay], ignore_index=True))
                             
                             st.markdown(f'<div class="paid-badge">Transaction Logged Successfully! ✅</div>', unsafe_allow_html=True)
                             st.link_button("📲 Submit Deposit Slip to Sir", f"https://wa.me/94717123334?text={pay_txt}")
@@ -241,7 +244,8 @@ with menu[3]:
 # --- TAB 5: LECTURE TIMETABLE CALENDAR ---
 with menu[4]:
     st.markdown("### 📅 Live Academic Operational Schedule")
-    st.components.v1.iframe("https://calendar.google.com/calendar/embed?src=buddhika1999b%40gmail.com", height=500)
+    # FIX: Replaced st.components.v1.iframe with st.iframe to avoid upcoming removal warnings
+    st.iframe("https://calendar.google.com/calendar/embed?src=buddhika1999b%40gmail.com", height=500)
 
 # --- TAB 6: PREMIUM LEARNING RESOURCES ---
 with menu[5]:
@@ -302,12 +306,14 @@ with st.expander("⚙️ GeoSense Educational Matrix Control Panel (Staff Only)"
                         if col_btn.button("Revoke Access", key=f"admin_r_{idx}"):
                             df_admin.at[idx, 'Access'] = "Don't Allow"
                             df_admin_clean = df_admin.drop(columns=['formatted_phone'], errors='ignore')
-                            conn.create(url=DB_URL, worksheet="Student_DB", data=df_admin_clean)
+                            # FIX: Changed conn.create to conn.update and removed direct url param
+                            conn.update(worksheet="Student_DB", data=df_admin_clean)
                             st.rerun()
                     else:
                         col_status.markdown("<span style='color:#e36414;font-weight:bold;'>Locked 🔒</span>", unsafe_allow_html=True)
                         if col_btn.button("Grant Access", key=f"admin_g_{idx}"):
                             df_admin.at[idx, 'Access'] = "Allow"
                             df_admin_clean = df_admin.drop(columns=['formatted_phone'], errors='ignore')
-                            conn.create(url=DB_URL, worksheet="Student_DB", data=df_admin_clean)
+                            # FIX: Changed conn.create to conn.update and removed direct url param
+                            conn.update(worksheet="Student_DB", data=df_admin_clean)
                             st.rerun()
