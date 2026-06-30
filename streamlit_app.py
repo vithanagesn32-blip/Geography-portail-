@@ -13,7 +13,7 @@ icon_url = "https://cdn-icons-png.flaticon.com/512/814/814513.png"
 st.set_page_config(page_title="GeoSense by Sahan", page_icon=icon_url, layout="centered")
 
 # --- 2. IMAGES (FB COVER & IMGBB GALLERY) ---
-FB_COVER_IMAGE_URL = "https://i.ibb.co/HLRrxp3n/TIF00958.jpg" 
+FB_COVER_IMAGE_URL = "https://i.ibb.co/pv1MBwZH/645857513-122124476361086173-5353523332435350460-n.png" 
 
 img_gallery_1 = "https://i.ibb.co/HLRrxp3n/TIF00958.jpg"
 img_gallery_2 = "https://i.ibb.co/SX4KBHF4/TIF00946.jpg"
