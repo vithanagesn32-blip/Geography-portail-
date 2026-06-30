@@ -7,7 +7,7 @@ import re
 
 # --- 1. CONFIGURATION & DIRECT DB LINK ---
 DB_URL = "https://docs.google.com/spreadsheets/d/1XByjOff262bUNx8i1bzCOQrzjXxw3JlU93paosDdpbE/edit?usp=sharing"
-DRIVE_URL = "https://drive.google.com/drive/folders/1MoGZVGhnEvv-sBwwivd9mIeU-Tybu8uL"
+DRIVE_URL = "https://drive.google.com/drive/folders/1XIwkqlSv8Kesf2abM0vwFeI8IX63qzEt?usp=drive_link"
 
 icon_url = "https://cdn-icons-png.flaticon.com/512/814/814513.png" 
 st.set_page_config(page_title="GeoSense by Sahan", page_icon=icon_url, layout="centered")
