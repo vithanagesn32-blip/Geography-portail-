@@ -52,9 +52,8 @@ def format_sheet_phone(num):
     if len(cleaned) == 9 and cleaned.startswith('7'): return "0" + cleaned
     return cleaned
 
-# --- 4. GOOGLE SHEET CONNECTION (FIXED: Changed url to spreadsheet parameter) ---
-# --- 4. GOOGLE SHEET CONNECTION (FIXED: Moved URL to Secrets to prevent TypeError) ---
-conn = st.connection("gsheets", type=GSheetsConnection)
+# --- 4. GOOGLE SHEET CONNECTION (FIXED USING THE PRESCRIBED GSHEETS INJECTIONS) ---
+conn = st.connection("gsheets", type=GSheetsConnection, spreadsheet=DB_URL)
 
 try:
     df_global_students = conn.read(worksheet="Student_DB", ttl=0)
