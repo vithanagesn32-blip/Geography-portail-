@@ -8,6 +8,7 @@ import re
 # --- 1. CONFIGURATION & DIRECT DB LINK ---
 DB_URL = "https://docs.google.com/spreadsheets/d/1XByjOff262bUNx8i1bzCOQrzjXxw3JlU93paosDdpbE/edit?usp=sharing"
 DRIVE_URL = "https://drive.google.com/drive/folders/1XIwkqlSv8Kesf2abM0vwFeI8IX63qzEt?usp=drive_link"
+SAHAN_WHATSAPP_LINK = "https://wa.me/94717123334" # WhatsApp ලින්ක් එක මෙතනට දැම්මා
 
 icon_url = "https://cdn-icons-png.flaticon.com/512/814/814513.png" 
 st.set_page_config(page_title="GeoSense by Sahan", page_icon=icon_url, layout="centered")
@@ -19,7 +20,7 @@ img_gallery_1 = "https://i.ibb.co/HLRrxp3n/TIF00958.jpg"
 img_gallery_2 = "https://i.ibb.co/SX4KBHF4/TIF00946.jpg"
 img_gallery_3 = "https://i.ibb.co/XxjWgkvy/TIF00721.jpg"
 
-# --- 3. CONSTANTS & UTILITIES ---
+# --- 3. CONSTANTS & UTILITIES (FUNCTIONS) ---
 BATCHES = ["2026 A/L", "2027 A/L", "2028 A/L"]
 
 DISTRICT_DATA = {
@@ -39,9 +40,18 @@ DISTRICT_DATA = {
 
 MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
-# --- Smart WhatsApp Link Generation with Pre-filled Message ---
+# Phone Number වලංගුදැයි බලන Functions
+def is_valid_phone(phone):
+    cleaned = re.sub(r'\D', '', str(phone))
+    return len(cleaned) in [9, 10]
+
+def format_sheet_phone(phone):
+    cleaned = re.sub(r'\D', '', str(phone))
+    if len(cleaned) == 9 and cleaned.startswith('7'):
+        return "0" + cleaned
+    return cleaned
+
 # --- 4. GOOGLE SHEET CONNECTION (DIRECT CREDENTIALS INJECTION) ---
-# Secrets වලින් කෙලින්ම credentials dict එක හදාගන්නවා
 credentials_dict = {
     "type": st.secrets["connections"]["gsheets"]["type"],
     "project_id": st.secrets["connections"]["gsheets"]["project_id"],
@@ -55,24 +65,12 @@ credentials_dict = {
     "client_x509_cert_url": st.secrets["connections"]["gsheets"]["client_x509_cert_url"]
 }
 
-# Credentials dict එක කෙලින්ම connection එකට pass කරනවා
 conn = st.connection("gsheets", type=GSheetsConnection, credentials=credentials_dict)
 
 try:
     df_global_students = conn.read(spreadsheet=DB_URL, worksheet="Student_DB", ttl=0)
 except Exception as e:
     st.error(f"⚠️ Unable to sync with database. Error Details: {e}")
-    df_global_students = pd.DataFrame()
-    if len(cleaned) == 9 and cleaned.startswith('7'): return "0" + cleaned
-    return cleaned
-
-# --- 4. GOOGLE SHEET CONNECTION ---
-conn = st.connection("gsheets", type=GSheetsConnection)
-
-try:
-    df_global_students = conn.read(spreadsheet=DB_URL, worksheet="Student_DB", ttl=0)
-except Exception as e:
-    st.error("⚠️ Unable to sync with database. Please verify configuration.")
     df_global_students = pd.DataFrame()
 
 # --- 5. PREMIUM UI CUSTOMIZATION (THEMING) ---
@@ -124,11 +122,11 @@ st.markdown('<p class="sub-title">Guiding the next Generation of Geographers</p>
 # --- 7. APPS TABS NAVIGATION ---
 menu = st.tabs(["🌍 Home", "📝 Registration", "💳 Fees & Payments", "📍 Student Map", "📅 Schedule", "📚 Resources"])
 
-# --- TAB 1: HOME (ABOUT THE LECTURER & ACADEMIC HUB) ---
+# --- TAB 1: HOME ---
 with menu[0]:
     col_img, col_det = st.columns([2, 3])
     with col_img:
-        st.image(img_gallery_1, caption="Sahan Vitanage", width="stretch")
+        st.image(img_gallery_1, caption="Sahan Vitanage", use_container_width=True)
     with col_det:
         st.markdown("""
         <div class="bio-card" style="padding:15px; height:100%;">
@@ -149,9 +147,9 @@ with menu[0]:
     st.markdown("### 🎓 Academic & Convocation Gallery")
     col_g1, col_g2 = st.columns(2)
     with col_g1:
-        st.image(img_gallery_2, caption="Excellence in Geospatial Science", width="stretch")
+        st.image(img_gallery_2, caption="Excellence in Geospatial Science", use_container_width=True)
     with col_g2:
-        st.image(img_gallery_3, caption="University of Peradeniya Convocation", width="stretch")
+        st.image(img_gallery_3, caption="University of Peradeniya Convocation", use_container_width=True)
         
     st.markdown("<hr style='border: 1px solid #e2eaeb;'>", unsafe_allow_html=True)
     st.markdown("<h4 style='text-align:center; color:#0f4c5c;'>Connect with GeoSense Community</h4>", unsafe_allow_html=True)
@@ -236,7 +234,12 @@ with menu[2]:
                                                          f"💰 Logged Value: LKR {p_amount}")
                                             
                             new_pay = pd.DataFrame([{"Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Name": s_name, "Phone_Number": pay_phone, "Batch": s_batch, "Month": p_month, "Amount": p_amount, "Status": "Paid"}])
-                            df_pays_hist = conn.read(spreadsheet=DB_URL, worksheet="Payments", ttl=0)
+                            
+                            try:
+                                df_pays_hist = conn.read(spreadsheet=DB_URL, worksheet="Payments", ttl=0)
+                            except:
+                                df_pays_hist = pd.DataFrame()
+                                
                             conn.update(spreadsheet=DB_URL, worksheet="Payments", data=pd.concat([df_pays_hist, new_pay], ignore_index=True))
                             
                             st.markdown(f'<div class="paid-badge">Transaction Logged Successfully! ✅</div>', unsafe_allow_html=True)
