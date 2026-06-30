@@ -52,8 +52,8 @@ def format_sheet_phone(num):
     if len(cleaned) == 9 and cleaned.startswith('7'): return "0" + cleaned
     return cleaned
 
-# --- 4. GOOGLE SHEET CONNECTION (FIXED: Added global url default) ---
-conn = st.connection("gsheets", type=GSheetsConnection, url=DB_URL)
+# --- 4. GOOGLE SHEET CONNECTION (FIXED: Changed url to spreadsheet parameter) ---
+conn = st.connection("gsheets", type=GSheetsConnection, spreadsheet=DB_URL)
 
 try:
     df_global_students = conn.read(worksheet="Student_DB", ttl=0)
@@ -184,7 +184,6 @@ with menu[1]:
                             "lat": DISTRICT_DATA[dist]["lat"], "lon": DISTRICT_DATA[dist]["lon"], 
                             "Access": "Don't Allow", "Group_Status": "Joined"
                         }])
-                        # FIX: Changed conn.create to conn.update and removed direct url param
                         conn.update(worksheet="Student_DB", data=pd.concat([df_students, new_student], ignore_index=True))
                         st.success("Successfully Registered Onto GeoSense Database Server! 🎉")
                         st.rerun()
@@ -224,7 +223,6 @@ with menu[2]:
                                             
                             new_pay = pd.DataFrame([{"Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Name": s_name, "Phone_Number": pay_phone, "Batch": s_batch, "Month": p_month, "Amount": p_amount, "Status": "Paid"}])
                             df_pays_hist = conn.read(worksheet="Payments", ttl=0)
-                            # FIX: Changed conn.create to conn.update and removed direct url param
                             conn.update(worksheet="Payments", data=pd.concat([df_pays_hist, new_pay], ignore_index=True))
                             
                             st.markdown(f'<div class="paid-badge">Transaction Logged Successfully! ✅</div>', unsafe_allow_html=True)
@@ -244,7 +242,6 @@ with menu[3]:
 # --- TAB 5: LECTURE TIMETABLE CALENDAR ---
 with menu[4]:
     st.markdown("### 📅 Live Academic Operational Schedule")
-    # FIX: Replaced st.components.v1.iframe with st.iframe to avoid upcoming removal warnings
     st.iframe("https://calendar.google.com/calendar/embed?src=buddhika1999b%40gmail.com", height=500)
 
 # --- TAB 6: PREMIUM LEARNING RESOURCES ---
@@ -306,7 +303,6 @@ with st.expander("⚙️ GeoSense Educational Matrix Control Panel (Staff Only)"
                         if col_btn.button("Revoke Access", key=f"admin_r_{idx}"):
                             df_admin.at[idx, 'Access'] = "Don't Allow"
                             df_admin_clean = df_admin.drop(columns=['formatted_phone'], errors='ignore')
-                            # FIX: Changed conn.create to conn.update and removed direct url param
                             conn.update(worksheet="Student_DB", data=df_admin_clean)
                             st.rerun()
                     else:
@@ -314,6 +310,5 @@ with st.expander("⚙️ GeoSense Educational Matrix Control Panel (Staff Only)"
                         if col_btn.button("Grant Access", key=f"admin_g_{idx}"):
                             df_admin.at[idx, 'Access'] = "Allow"
                             df_admin_clean = df_admin.drop(columns=['formatted_phone'], errors='ignore')
-                            # FIX: Changed conn.create to conn.update and removed direct url param
                             conn.update(worksheet="Student_DB", data=df_admin_clean)
                             st.rerun()
