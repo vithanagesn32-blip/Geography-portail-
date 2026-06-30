@@ -52,11 +52,11 @@ def format_sheet_phone(num):
     if len(cleaned) == 9 and cleaned.startswith('7'): return "0" + cleaned
     return cleaned
 
-# --- 4. GOOGLE SHEET CONNECTION (FIXED USING THE PRESCRIBED GSHEETS INJECTIONS) ---
-conn = st.connection("gsheets", type=GSheetsConnection, spreadsheet=DB_URL)
+# --- 4. GOOGLE SHEET CONNECTION (FIXED: Arguments isolated to .read / .update method bypasses the TypeError) ---
+conn = st.connection("gsheets", type=GSheetsConnection)
 
 try:
-    df_global_students = conn.read(worksheet="Student_DB", ttl=0)
+    df_global_students = conn.read(spreadsheet=DB_URL, worksheet="Student_DB", ttl=0)
 except Exception as e:
     st.error("⚠️ Unable to sync with database. Please verify configuration.")
     df_global_students = pd.DataFrame()
@@ -184,7 +184,7 @@ with menu[1]:
                             "lat": DISTRICT_DATA[dist]["lat"], "lon": DISTRICT_DATA[dist]["lon"], 
                             "Access": "Don't Allow", "Group_Status": "Joined"
                         }])
-                        conn.update(worksheet="Student_DB", data=pd.concat([df_students, new_student], ignore_index=True))
+                        conn.update(spreadsheet=DB_URL, worksheet="Student_DB", data=pd.concat([df_students, new_student], ignore_index=True))
                         st.success("Successfully Registered Onto GeoSense Database Server! 🎉")
                         st.rerun()
 
@@ -222,8 +222,8 @@ with menu[2]:
                                                          f"💰 Logged Value: LKR {p_amount}")
                                             
                             new_pay = pd.DataFrame([{"Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Name": s_name, "Phone_Number": pay_phone, "Batch": s_batch, "Month": p_month, "Amount": p_amount, "Status": "Paid"}])
-                            df_pays_hist = conn.read(worksheet="Payments", ttl=0)
-                            conn.update(worksheet="Payments", data=pd.concat([df_pays_hist, new_pay], ignore_index=True))
+                            df_pays_hist = conn.read(spreadsheet=DB_URL, worksheet="Payments", ttl=0)
+                            conn.update(spreadsheet=DB_URL, worksheet="Payments", data=pd.concat([df_pays_hist, new_pay], ignore_index=True))
                             
                             st.markdown(f'<div class="paid-badge">Transaction Logged Successfully! ✅</div>', unsafe_allow_html=True)
                             st.link_button("📲 Submit Deposit Slip to Sir", f"https://wa.me/94717123334?text={pay_txt}")
@@ -303,12 +303,12 @@ with st.expander("⚙️ GeoSense Educational Matrix Control Panel (Staff Only)"
                         if col_btn.button("Revoke Access", key=f"admin_r_{idx}"):
                             df_admin.at[idx, 'Access'] = "Don't Allow"
                             df_admin_clean = df_admin.drop(columns=['formatted_phone'], errors='ignore')
-                            conn.update(worksheet="Student_DB", data=df_admin_clean)
+                            conn.update(spreadsheet=DB_URL, worksheet="Student_DB", data=df_admin_clean)
                             st.rerun()
                     else:
                         col_status.markdown("<span style='color:#e36414;font-weight:bold;'>Locked 🔒</span>", unsafe_allow_html=True)
                         if col_btn.button("Grant Access", key=f"admin_g_{idx}"):
                             df_admin.at[idx, 'Access'] = "Allow"
                             df_admin_clean = df_admin.drop(columns=['formatted_phone'], errors='ignore')
-                            conn.update(worksheet="Student_DB", data=df_admin_clean)
+                            conn.update(spreadsheet=DB_URL, spreadsheet=DB_URL, worksheet="Student_DB", data=df_admin_clean)
                             st.rerun()
