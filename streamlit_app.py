@@ -8,7 +8,7 @@ import re
 # --- 1. CONFIGURATION & DIRECT DB LINK ---
 DB_URL = "https://docs.google.com/spreadsheets/d/1XByjOff262bUNx8i1bzCOQrzjXxw3JlU93paosDdpbE/edit?usp=sharing"
 DRIVE_URL = "https://drive.google.com/drive/folders/1XIwkqlSv8Kesf2abM0vwFeI8IX63qzEt?usp=drive_link"
-SAHAN_WHATSAPP_LINK = "https://wa.me/94717123334" # WhatsApp ලින්ක් එක මෙතනට දැම්මා
+SAHAN_WHATSAPP_LINK = "https://wa.me/94717123334"
 
 icon_url = "https://cdn-icons-png.flaticon.com/512/814/814513.png" 
 st.set_page_config(page_title="GeoSense by Sahan", page_icon=icon_url, layout="centered")
@@ -20,7 +20,7 @@ img_gallery_1 = "https://i.ibb.co/HLRrxp3n/TIF00958.jpg"
 img_gallery_2 = "https://i.ibb.co/SX4KBHF4/TIF00946.jpg"
 img_gallery_3 = "https://i.ibb.co/XxjWgkvy/TIF00721.jpg"
 
-# --- 3. CONSTANTS & UTILITIES (FUNCTIONS) ---
+# --- 3. CONSTANTS & UTILITIES ---
 BATCHES = ["2026 A/L", "2027 A/L", "2028 A/L"]
 
 DISTRICT_DATA = {
@@ -40,7 +40,6 @@ DISTRICT_DATA = {
 
 MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
-# Phone Number වලංගුදැයි බලන Functions
 def is_valid_phone(phone):
     cleaned = re.sub(r'\D', '', str(phone))
     return len(cleaned) in [9, 10]
@@ -51,21 +50,18 @@ def format_sheet_phone(phone):
         return "0" + cleaned
     return cleaned
 
-# --- 4. GOOGLE SHEET CONNECTION (DIRECT CREDENTIALS INJECTION) ---
-credentials_dict = {
-    "type": st.secrets["connections"]["gsheets"]["type"],
-    "project_id": st.secrets["connections"]["gsheets"]["project_id"],
-    "private_key_id": st.secrets["connections"]["gsheets"]["private_key_id"],
-    "private_key": st.secrets["connections"]["gsheets"]["private_key"].replace("\\n", "\n"),
-    "client_email": st.secrets["connections"]["gsheets"]["client_email"],
-    "client_id": st.secrets["connections"]["gsheets"]["client_id"],
-    "auth_uri": st.secrets["connections"]["gsheets"]["auth_uri"],
-    "token_uri": st.secrets["connections"]["gsheets"]["token_uri"],
-    "auth_provider_x509_cert_url": st.secrets["connections"]["gsheets"]["auth_provider_x509_cert_url"],
-    "client_x509_cert_url": st.secrets["connections"]["gsheets"]["client_x509_cert_url"]
-}
+# --- 4. GOOGLE SHEET CONNECTION (SAFE BACKEND INJECTION) ---
+# Secrets වල තියෙන \n ප්‍රශ්නය කෝඩ් එකෙන්ම මෙහෙම විසඳනවා:
+try:
+    if "connections" in st.secrets and "gsheets" in st.secrets["connections"]:
+        # දැනට තියෙන private key එකේ \n ටික නිවැරදි කරනවා
+        raw_key = st.secrets["connections"]["gsheets"]["private_key"]
+        st.secrets["connections"]["gsheets"]["private_key"] = raw_key.replace("\\n", "\n")
+except Exception as e:
+    pass
 
-conn = st.connection("gsheets", type=GSheetsConnection, credentials=credentials_dict)
+# දැන් සාමාන්‍ය විදිහට කනෙක්ට් කරනවා (TypeError එකක් එන්නේ නැහැ)
+conn = st.connection("gsheets", type=GSheetsConnection)
 
 try:
     df_global_students = conn.read(spreadsheet=DB_URL, worksheet="Student_DB", ttl=0)
