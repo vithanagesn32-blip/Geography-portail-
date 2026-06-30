@@ -6,10 +6,9 @@ import urllib.parse
 import re
 
 # --- 1. CONFIGURATION & DIRECT DB LINK ---
-# Your exact Google Sheet URL
 DB_URL = "https://docs.google.com/spreadsheets/d/1XByjOff262bUNx8i1bzCOQrzjXxw3JlU93paosDdpbE/edit?usp=sharing"
 
-icon_url = "https://cdn-icons-png.flaticon.com/512/814/814513.png" # Professional Globe Icon
+icon_url = "https://cdn-icons-png.flaticon.com/512/814/814513.png" 
 st.set_page_config(page_title="GeoSense by Sahan", page_icon=icon_url, layout="centered")
 
 # --- 2. IMAGES FROM IMGBB ---
@@ -18,11 +17,7 @@ img_gallery_2 = "https://i.ibb.co/SX4KBHF4/TIF00946.jpg"
 img_gallery_3 = "https://i.ibb.co/XxjWgkvy/TIF00721.jpg"
 
 # --- 3. CONSTANTS & UTILITIES ---
-WHATSAPP_GROUPS = {
-    "2026 A/L": "https://chat.whatsapp.com/CZcifW6qs0KCOrdX46n0E9",
-    "2027 A/L": "https://chat.whatsapp.com/ElrGd68bvXDGEYw5XBEb1f",
-    "2028 A/L": "https://chat.whatsapp.com/JZdWvJT6gX6J0uqUFNvTuK"
-}
+BATCHES = ["2026 A/L", "2027 A/L", "2028 A/L"]
 
 DISTRICT_DATA = {
     "Colombo": {"lat": 6.9271, "lon": 79.8612}, "Kandy": {"lat": 7.2906, "lon": 80.6337},
@@ -40,6 +35,8 @@ DISTRICT_DATA = {
 }
 
 MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+
+SAHAN_WHATSAPP_LINK = "https://wa.me/message/OCRVAFUSEYPYM1"
 
 def is_valid_phone(number):
     return bool(re.match(r"^0[0-9]{9}$", str(number)))
@@ -62,7 +59,7 @@ except Exception as e:
 # --- 5. PREMIUM UI CUSTOMIZATION (THEMING) ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght=300;400;500;600;700&display=swap');
     
     .stApp { 
         background: linear-gradient(rgba(244, 248, 249, 0.92), rgba(244, 248, 249, 0.92)), 
@@ -87,7 +84,6 @@ st.markdown("""
     .profile-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); margin-bottom: 20px; border-left: 5px solid #0f4c5c; }
     .paid-badge { background-color: #2ec4b6; color: white; padding: 15px; border-radius: 12px; text-align: center; font-weight: bold; margin: 15px 0; }
     
-    /* --- SMART SOCIAL MEDIA ICONS STYLE --- */
     .social-container { display: flex; justify-content: center; gap: 25px; margin: 20px 0; }
     .social-icon { width: 45px; height: 45px; transition: transform 0.3s ease, filter 0.3s ease; cursor: pointer; }
     .social-icon:hover { transform: scale(1.2); filter: drop-shadow(0px 5px 8px rgba(0,0,0,0.15)); }
@@ -106,7 +102,6 @@ menu = st.tabs(["🌍 Home", "📝 Registration", "💳 Fees & Payments", "📍 
 
 # --- TAB 1: HOME (ABOUT THE LECTURER & ACADEMIC HUB) ---
 with menu[0]:
-    # Dynamic Profile Layout
     col_img, col_det = st.columns([2, 3])
     with col_img:
         st.image(img_gallery_1, caption="Sahan Vitanage", use_container_width=True)
@@ -134,7 +129,6 @@ with menu[0]:
     with col_g2:
         st.image(img_gallery_3, caption="University of Peradeniya Convocation", use_container_width=True)
         
-    # Smart Social Media Media Hub Section (Hover Icons)
     st.markdown("<hr style='border: 1px solid #e2eaeb;'>", unsafe_allow_html=True)
     st.markdown("<h4 style='text-align:center; color:#0f4c5c;'>Connect with GeoSense Community</h4>", unsafe_allow_html=True)
     
@@ -153,13 +147,12 @@ with menu[0]:
     """, unsafe_allow_html=True)
     
     st.write("")
-    contact_msg = urllib.parse.quote("Hello Sir, I'm reaching out via the GeoSense portal to inquire about Geography classes.")
-    st.link_button("📲 Chat Directly on WhatsApp Business", f"https://wa.me/94779316692?text={contact_msg}")
+    st.link_button("📲 Chat Directly on WhatsApp Business", SAHAN_WHATSAPP_LINK)
 
 # --- TAB 2: REGISTRATION FORM ---
 with menu[1]:
     st.markdown("### 📝 Create Student Account")
-    check_phone = st.text_input("Enter your WhatsApp Mobile Number", key="reg_check", max_chars=10, placeholder="e.g., 0771234567")
+    check_phone = st.text_input("Enter your WhatsApp Mobile Number", key="reg_check", max_chars=10, placeholder="e.g., 0711234567")
     
     if check_phone and is_valid_phone(check_phone):
         df_students = df_global_students.copy() if not df_global_students.empty else pd.DataFrame()
@@ -170,7 +163,7 @@ with menu[1]:
         else:
             with st.form("reg_form", clear_on_submit=True):
                 name = st.text_input("Full Student Name")
-                batch = st.selectbox("Academic Year (Batch)", list(WHATSAPP_GROUPS.keys()))
+                batch = st.selectbox("Academic Year (Batch)", BATCHES)
                 dist = st.selectbox("Residential District", list(DISTRICT_DATA.keys()))
                 
                 if st.form_submit_button("Submit Registration Profile"):
@@ -179,25 +172,22 @@ with menu[1]:
                             "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
                             "Name": name, "Phone_Number": check_phone, "Batch": batch, "District": dist, 
                             "lat": DISTRICT_DATA[dist]["lat"], "lon": DISTRICT_DATA[dist]["lon"], 
-                            "Access": "Don't Allow", "Group_Status": "Pending"
+                            "Access": "Don't Allow", "Group_Status": "Joined"
                         }])
-                        conn.update(url=DB_URL, worksheet="Student_DB", data=pd.concat([df_students, new_student], ignore_index=True))
-                        st.success("Successfully Registered onto Database Server!")
-                        st.link_button("👉 Step 2: Now Join Official WhatsApp Group", WHATSAPP_GROUPS[batch])
+                        conn.create(url=DB_URL, worksheet="Student_DB", data=pd.concat([df_students, new_student], ignore_index=True))
+                        st.success("Successfully Registered Onto GeoSense Database Server! 🎉")
 
 # --- TAB 3: FEES & PAYMENTS SUBMISSION ---
 with menu[2]:
     st.markdown("""
-    <div class="bio-card" style="border: 1.5px dashed #118ab2;">
-        <h4 style="color: #0f4c5c; margin-top:0;">🏦 Class Fee Bank Account Matrix:</h4>
-        <p style='margin: 5px 0; font-size: 15px;'><b>Account Number:</b> <span style='color: #e36414; font-size: 18px; font-weight: bold;'>042 2 001 9 0052407</span></p>
-        <p style='margin: 5px 0;'><b>Account Name:</b> H.M Buddhika Sampath Gunathilaka</p>
-        <p style='margin: 5px 0;'><b>Banking Corporate:</b> People's Bank</p>
-        <p style='margin: 5px 0;'><b>Clearing Branch:</b> Kekirawa</p>
+    <div class="bio-card" style="border: 1.5px dashed #e36414; text-align: center;">
+        <h4 style="color: #0f4c5c; margin-top:0;">🏦 Class Fee Bank Details:</h4>
+        <p style='color: #e36414; font-size: 16px; font-weight: bold; margin: 10px 0;'>Class Fee Bank Details Will Be Updated Soon! ⏳</p>
+        <p style='font-size: 13.5px; color: #555;'>Please contact Sahan Sir via WhatsApp for immediate class fee payment inquiries.</p>
     </div>
     """, unsafe_allow_html=True)
 
-    pay_phone = st.text_input("Enter Registered WhatsApp Number (07xxxxxxxx)", key="pay_check", max_chars=10, placeholder="e.g., 0771234567")
+    pay_phone = st.text_input("Enter Registered WhatsApp Number (07xxxxxxxx)", key="pay_check", max_chars=10, placeholder="e.g., 0711234567")
     if pay_phone and is_valid_phone(pay_phone):
         df_reg = df_global_students.copy() if not df_global_students.empty else pd.DataFrame()
         if not df_reg.empty and 'Phone_Number' in df_reg.columns:
@@ -208,34 +198,25 @@ with menu[2]:
                 s_name, s_batch = user.iloc[0]['Name'], user.iloc[0]['Batch']
                 st.markdown(f'<div class="profile-card"><h4>{s_name}</h4><p>Batch Stream: {s_batch}</p></div>', unsafe_allow_html=True)
                 
-                is_pending = True
-                if 'Group_Status' in user.columns and not pd.isna(user.iloc[0]['Group_Status']):
-                    if str(user.iloc[0]['Group_Status']).strip().lower() == 'joined':
-                        is_pending = False
-                
-                if is_pending:
-                    st.error("🔒 Security Hold: System detects you haven't joined the official WhatsApp group. Please join to activate financial forms.")
-                    st.link_button("🟢 Join WhatsApp Stream", WHATSAPP_GROUPS[s_batch])
-                else:
-                    with st.form("pay_form", clear_on_submit=True):
-                        p_month = st.selectbox("Select Target Billing Month", MONTHS)
-                        p_amount = st.text_input("Transacted Amount (LKR)")
-                        
-                        if st.form_submit_button("Upload and Log Payment"):
-                            if p_amount:
-                                pay_txt = urllib.parse.quote(f"*Class Fee Log Receipt - GeoSense*\n\n"
-                                                             f"👤 Student: {s_name}\n"
-                                                             f"🎓 Stream Batch: {s_batch}\n"
-                                                             f"📅 Target Month: {p_month}\n"
-                                                             f"💰 Logged Value: LKR {p_amount}\n\n"
-                                                             f"(I am transmitting my bank transaction slip layout via WhatsApp.)")
-                                
-                                new_pay = pd.DataFrame([{"Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Name": s_name, "Phone_Number": pay_phone, "Batch": s_batch, "Month": p_month, "Amount": p_amount, "Status": "Paid"}])
-                                df_pays_hist = conn.read(url=DB_URL, worksheet="Payments", ttl=0)
-                                conn.update(url=DB_URL, worksheet="Payments", data=pd.concat([df_pays_hist, new_pay], ignore_index=True))
-                                
-                                st.markdown(f'<div class="paid-badge">Transaction Logged Successfully! ✅</div>', unsafe_allow_html=True)
-                                st.link_button("📲 Submit Deposit Slip Now", f"https://wa.me/94779316692?text={pay_txt}")
+                with st.form("pay_form", clear_on_submit=True):
+                    p_month = st.selectbox("Select Target Billing Month", MONTHS)
+                    p_amount = st.text_input("Transacted Amount (LKR)")
+                    
+                    if st.form_submit_button("Upload and Log Payment"):
+                        if p_amount:
+                            pay_txt = urllib.parse.quote(f"*Class Fee Log Receipt - GeoSense*\n\n"
+                                                         f"👤 Student: {s_name}\n"
+                                                         f"🎓 Stream Batch: {s_batch}\n"
+                                                         f"📅 Target Month: {p_month}\n"
+                                                         f"💰 Logged Value: LKR {p_amount}\n\n"
+                                                         f"Sir, I have submitted the payment info. Sending the slip snapshot now.")
+                                            
+                            new_pay = pd.DataFrame([{"Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Name": s_name, "Phone_Number": pay_phone, "Batch": s_batch, "Month": p_month, "Amount": p_amount, "Status": "Paid"}])
+                            df_pays_hist = conn.read(url=DB_URL, worksheet="Payments", ttl=0)
+                            conn.create(url=DB_URL, worksheet="Payments", data=pd.concat([df_pays_hist, new_pay], ignore_index=True))
+                            
+                            st.markdown(f'<div class="paid-badge">Transaction Logged Successfully! ✅</div>', unsafe_allow_html=True)
+                            st.link_button("📲 Submit Deposit Slip to Sir", f"{SAHAN_WHATSAPP_LINK}?text={pay_txt}")
             else:
                 st.error("❌ Authentication Error: This phone footprint does not exist on our servers.")
 
@@ -256,7 +237,7 @@ with menu[4]:
 # --- TAB 6: PREMIUM LEARNING RESOURCES ---
 with menu[5]:
     st.markdown("### 📚 Strategic Geography Analytics, Notes & Mapping Frameworks")
-    tute_phone = st.text_input("Enter WhatsApp Authentication ID to access Cloud Assets", key="tute_check", max_chars=10, placeholder="e.g., 0771234567")
+    tute_phone = st.text_input("Enter WhatsApp Authentication ID to access Cloud Assets", key="tute_check", max_chars=10, placeholder="e.g., 0711234567")
     
     if tute_phone and is_valid_phone(tute_phone):
         df_reg = df_global_students.copy() if not df_global_students.empty else pd.DataFrame()
@@ -267,26 +248,17 @@ with menu[5]:
             if not user.empty:
                 s_name, s_batch = user.iloc[0]['Name'], user.iloc[0]['Batch']
                 
-                is_pending = True
-                if 'Group_Status' in user.columns and not pd.isna(user.iloc[0]['Group_Status']):
-                    if str(user.iloc[0]['Group_Status']).strip().lower() == 'joined':
-                        is_pending = False
-                
-                if is_pending:
-                    st.error("🔒 Security Hold: Access Denied. Join the verified group channel to release access keys.")
-                    st.link_button("🟢 Join Group Node", WHATSAPP_GROUPS[s_batch])
+                if 'Access' in user.columns and str(user.iloc[0]['Access']).strip().lower() == 'allow':
+                    st.success(f"🔓 Access Granted! Welcome {s_name}. Cloud sync active.")
+                    st.link_button("📥 Open Cloud Vault (Notes & Resources)", "https://drive.google.com/drive/folders/1MoGZVGhnEvv-sBwwivd9mIeU-Tybu8uL")
                 else:
-                    if 'Access' in user.columns and str(user.iloc[0]['Access']).strip().lower() == 'allow':
-                        st.success(f"🔓 Access Granted! Welcome {s_name}. Cloud sync active.")
-                        st.link_button("📥 Open Cloud Vault (Notes & Resources)", "https://drive.google.com/drive/folders/1MoGZVGhnEvv-sBwwivd9mIeU-Tybu8uL")
-                    else:
-                        st.error("⏳ Security Approval Pending: Your teacher needs to manually whitelist your access profile parameters.")
-                        req_msg = urllib.parse.quote(f"*Resource Vault Whitelist Request - GeoSense*\n\n"
-                                                     f"👤 Student Identity: {s_name}\n"
-                                                     f"🎓 Target Batch Node: {s_batch}\n"
-                                                     f"📱 Comms Link ID: {tute_phone}\n\n"
-                                                     f"Sir, please run a verification check on my logs and authorize cloud vault access keys.")
-                        st.link_button("📲 Query Teacher for Whitelist Access", f"https://wa.me/94779316692?text={req_msg}")
+                    st.error("⏳ Security Approval Pending: Your teacher needs to manually whitelist your access profile parameters.")
+                    req_msg = urllib.parse.quote(f"*Resource Vault Whitelist Request - GeoSense*\n\n"
+                                                 f"👤 Student Identity: {s_name}\n"
+                                                 f"🎓 Target Batch Node: {s_batch}\n"
+                                                 f"📱 Comms Link ID: {tute_phone}\n\n"
+                                                 f"Sir, please run a verification check on my logs and authorize cloud vault access keys.")
+                    st.link_button("📲 Query Teacher for Whitelist Access", f"{SAHAN_WHATSAPP_LINK}?text={req_msg}")
             else:
                 st.error("❌ Identification ID not verified on database servers.")
 
@@ -298,35 +270,35 @@ with st.expander("⚙️ GeoSense Educational Matrix Control Panel (Staff Only)"
         st.success("Admin Node Authenticated!")
         df_admin = df_global_students.copy() if not df_global_students.empty else pd.DataFrame()
         if not df_admin.empty:
-            if 'Group_Status' not in df_admin.columns: df_admin['Group_Status'] = 'Pending'
-            else: df_admin['Group_Status'] = df_admin['Group_Status'].fillna('Pending').astype(str).replace({'nan': 'Pending', '': 'Pending'})
+            if 'Access' not in df_admin.columns: df_admin['Access'] = "Don't Allow"
+            else: df_admin['Access'] = df_admin['Access'].fillna("Don't Allow").astype(str).replace({'nan': "Don't Allow", '': "Don't Allow"})
             
             df_admin['formatted_phone'] = df_admin['Phone_Number'].apply(format_sheet_phone)
             
-            st.markdown("### 📋 Student Validation Pipeline Management")
-            view_opt = st.radio("Pipeline Filters", ["All Node Registry Logs", "Awaiting Verification Logins Only"], horizontal=True)
-            display_df = df_admin if view_opt == "All Node Registry Logs" else df_admin[df_admin['Group_Status'] == 'Pending']
+            st.markdown("### 📋 Student Resource Access Management")
+            view_opt = st.radio("Pipeline Filters", ["All Node Registry Logs", "Awaiting Resource Approval Only"], horizontal=True)
+            display_df = df_admin if view_opt == "All Node Registry Logs" else df_admin[df_admin['Access'] == "Don't Allow"]
             
             if display_df.empty:
                 st.info("No matching identity data packets active on the workspace pipeline.")
             else:
                 for idx, row in display_df.iterrows():
                     col_info, col_status, col_btn = st.columns([3, 1, 1])
-                    current_status = row['Group_Status']
+                    current_access = row['Access']
                     
                     col_info.write(f"👤 **{row['Name']}** ({row['Batch']}) - {row['formatted_phone']}")
                     
-                    if current_status == 'Joined':
-                        col_status.markdown("<span style='color:#2ec4b6;font-weight:bold;'>Joined ✅</span>", unsafe_allow_html=True)
-                        if col_btn.button("Revoke Group Token", key=f"admin_p_{idx}"):
-                            df_admin.at[idx, 'Group_Status'] = 'Pending'
+                    if current_access.lower() == 'allow':
+                        col_status.markdown("<span style='color:#2ec4b6;font-weight:bold;'>Allowed 🔓</span>", unsafe_allow_html=True)
+                        if col_btn.button("Revoke Access", key=f"admin_r_{idx}"):
+                            df_admin.at[idx, 'Access'] = "Don't Allow"
                             df_admin_clean = df_admin.drop(columns=['formatted_phone'], errors='ignore')
-                            conn.update(url=DB_URL, worksheet="Student_DB", data=df_admin_clean)
+                            conn.create(url=DB_URL, worksheet="Student_DB", data=df_admin_clean)
                             st.rerun()
                     else:
-                        col_status.markdown("<span style='color:#e36414;font-weight:bold;'>Pending ❌</span>", unsafe_allow_html=True)
-                        if col_btn.button("Authorize Group Token", key=f"admin_j_{idx}"):
-                            df_admin.at[idx, 'Group_Status'] = 'Joined'
+                        col_status.markdown("<span style='color:#e36414;font-weight:bold;'>Locked 🔒</span>", unsafe_allow_html=True)
+                        if col_btn.button("Grant Access", key=f"admin_g_{idx}"):
+                            df_admin.at[idx, 'Access'] = "Allow"
                             df_admin_clean = df_admin.drop(columns=['formatted_phone'], errors='ignore')
-                            conn.update(url=DB_URL, worksheet="Student_DB", data=df_admin_clean)
+                            conn.create(url=DB_URL, worksheet="Student_DB", data=df_admin_clean)
                             st.rerun()
