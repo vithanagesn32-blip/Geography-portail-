@@ -13,7 +13,6 @@ icon_url = "https://cdn-icons-png.flaticon.com/512/814/814513.png"
 st.set_page_config(page_title="GeoSense by Sahan", page_icon=icon_url, layout="centered")
 
 # --- 2. IMAGES (FB COVER & IMGBB GALLERY) ---
-# ⚠️ මචං, මෙන්න මේ පල්ලෙහා තියෙන ලින්ක් එක වෙනුවට ඔයා FB එකෙන් ගත්ත Cover Image ලින්ක් එක දාන්න:
 FB_COVER_IMAGE_URL = "https://i.ibb.co/HLRrxp3n/TIF00958.jpg" 
 
 img_gallery_1 = "https://i.ibb.co/HLRrxp3n/TIF00958.jpg"
@@ -98,8 +97,13 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 6. BRANDING HEADER WITH FB COVER IMAGE ---
-st.image(FB_COVER_IMAGE_URL, use_container_width=True, style="border-radius: 16px; margin-bottom: 15px;")
+# --- 6. BRANDING HEADER WITH FB COVER IMAGE (FIXED ERROR) ---
+st.markdown(f"""
+    <div style="display: flex; justify-content: center; margin-bottom: 15px;">
+        <img src="{FB_COVER_IMAGE_URL}" style="width: 100%; border-radius: 16px; object-fit: cover; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+    </div>
+""", unsafe_allow_html=True)
+
 st.markdown('<p class="main-title">GeoSense <span style="color:#e36414; font-weight:400;">by Sahan</span></p>', unsafe_allow_html=True)
 st.markdown('<p class="sub-title">Guiding the next Generation of Geographers</p>', unsafe_allow_html=True)
 
