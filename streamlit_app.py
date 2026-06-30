@@ -51,16 +51,13 @@ def format_sheet_phone(phone):
     return cleaned
 
 # --- 4. GOOGLE SHEET CONNECTION (SAFE BACKEND INJECTION) ---
-# Secrets වල තියෙන \n ප්‍රශ්නය කෝඩ් එකෙන්ම මෙහෙම විසඳනවා:
 try:
     if "connections" in st.secrets and "gsheets" in st.secrets["connections"]:
-        # දැනට තියෙන private key එකේ \n ටික නිවැරදි කරනවා
         raw_key = st.secrets["connections"]["gsheets"]["private_key"]
         st.secrets["connections"]["gsheets"]["private_key"] = raw_key.replace("\\n", "\n")
 except Exception as e:
     pass
 
-# දැන් සාමාන්‍ය විදිහට කනෙක්ට් කරනවා (TypeError එකක් එන්නේ නැහැ)
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 try:
@@ -174,7 +171,7 @@ with menu[1]:
     
     if check_phone and is_valid_phone(check_phone):
         df_students = df_global_students.copy() if not df_global_students.empty else pd.DataFrame()
-        existing_numbers = df_students['Phone_Number'].apply(format_sheet_phone).values if not df_students.empty and 'Phone_Number' in df_students.columns else []
+        existing_numbers = df_students['Contact_Number'].apply(format_sheet_phone).values if not df_students.empty and 'Contact_Number' in df_students.columns else []
         
         if str(check_phone).strip() in existing_numbers:
             st.warning("⚠️ Access Profile Alert: This phone number is already registered inside GeoSense!")
@@ -188,9 +185,9 @@ with menu[1]:
                     if name:
                         new_student = pd.DataFrame([{
                             "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
-                            "Name": name, "Phone_Number": check_phone, "Batch": batch, "District": dist, 
-                            "lat": DISTRICT_DATA[dist]["lat"], "lon": DISTRICT_DATA[dist]["lon"], 
-                            "Access": "Don't Allow", "Group_Status": "Joined"
+                            "Name": name, "Contact_Number": check_phone, "Batch": batch, "District": dist, 
+                            "Lon.": DISTRICT_DATA[dist]["lon"], "Lati.": DISTRICT_DATA[dist]["lat"], 
+                            "Accesess": "Don't Allow"
                         }])
                         conn.update(spreadsheet=DB_URL, worksheet="Student_DB", data=pd.concat([df_students, new_student], ignore_index=True))
                         st.success("Successfully Registered Onto GeoSense Database Server! 🎉")
@@ -209,8 +206,8 @@ with menu[2]:
     pay_phone = st.text_input("Enter Registered WhatsApp Number (07xxxxxxxx)", key="pay_check", max_chars=10, placeholder="e.g., 0711234567")
     if pay_phone and is_valid_phone(pay_phone):
         df_reg = df_global_students.copy() if not df_global_students.empty else pd.DataFrame()
-        if not df_reg.empty and 'Phone_Number' in df_reg.columns:
-            df_reg['formatted_phone'] = df_reg['Phone_Number'].apply(format_sheet_phone)
+        if not df_reg.empty and 'Contact_Number' in df_reg.columns:
+            df_reg['formatted_phone'] = df_reg['Contact_Number'].apply(format_sheet_phone)
             user = df_reg[df_reg['formatted_phone'] == str(pay_phone).strip()]
             
             if not user.empty:
@@ -229,7 +226,14 @@ with menu[2]:
                                                          f"📅 Target Month: {p_month}\n"
                                                          f"💰 Logged Value: LKR {p_amount}")
                                             
-                            new_pay = pd.DataFrame([{"Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Name": s_name, "Phone_Number": pay_phone, "Batch": s_batch, "Month": p_month, "Amount": p_amount, "Status": "Paid"}])
+                            new_pay = pd.DataFrame([{
+                                "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
+                                "Name": s_name, 
+                                "Contact_Number": pay_phone, 
+                                "Batch": s_batch, 
+                                "Month": p_month, 
+                                "PaymentStatus": f"Paid - LKR {p_amount}"
+                            }])
                             
                             try:
                                 df_pays_hist = conn.read(spreadsheet=DB_URL, worksheet="Payments", ttl=0)
@@ -247,8 +251,10 @@ with menu[2]:
 with menu[3]:
     st.markdown("### 📍 Live Geospatial Student GIS Density Map")
     st.write("Leveraging built-in GIS properties to showcase the live island-wide registration footprint.")
-    if not df_global_students.empty and 'lat' in df_global_students.columns and 'lon' in df_global_students.columns:
-        st.map(df_global_students[['lat', 'lon']].dropna(), color="#0f4c5c")
+    if not df_global_students.empty and 'Lati.' in df_global_students.columns and 'Lon.' in df_global_students.columns:
+        # Streamlit සිතියමට අවශ්‍ය 'lat' සහ 'lon' නම් වලට හරවා සිතියම අඳිනවා
+        map_df = df_global_students[['Lati.', 'Lon.']].dropna().rename(columns={'Lati.': 'lat', 'Lon.': 'lon'})
+        st.map(map_df, color="#0f4c5c")
     else:
         st.info("Awaiting live GIS node coordination inputs.")
 
@@ -264,14 +270,14 @@ with menu[5]:
     
     if tute_phone and is_valid_phone(tute_phone):
         df_reg = df_global_students.copy() if not df_global_students.empty else pd.DataFrame()
-        if not df_reg.empty and 'Phone_Number' in df_reg.columns:
-            df_reg['formatted_phone'] = df_reg['Phone_Number'].apply(format_sheet_phone)
+        if not df_reg.empty and 'Contact_Number' in df_reg.columns:
+            df_reg['formatted_phone'] = df_reg['Contact_Number'].apply(format_sheet_phone)
             user = df_reg[df_reg['formatted_phone'] == str(tute_phone).strip()]
             
             if not user.empty:
                 s_name, s_batch = user.iloc[0]['Name'], user.iloc[0]['Batch']
                 
-                if 'Access' in user.columns and str(user.iloc[0]['Access']).strip().lower() == 'allow':
+                if 'Accesess' in user.columns and str(user.iloc[0]['Accesess']).strip().lower() == 'allow':
                     st.success(f"🔓 Access Granted! Welcome {s_name}. Cloud sync active.")
                     st.link_button("📥 Open Cloud Vault (Notes & Resources)", DRIVE_URL)
                 else:
@@ -293,35 +299,35 @@ with st.expander("⚙️ GeoSense Educational Matrix Control Panel (Staff Only)"
         st.success("Admin Node Authenticated!")
         df_admin = df_global_students.copy() if not df_global_students.empty else pd.DataFrame()
         if not df_admin.empty:
-            if 'Access' not in df_admin.columns: df_admin['Access'] = "Don't Allow"
-            else: df_admin['Access'] = df_admin['Access'].fillna("Don't Allow").astype(str).replace({'nan': "Don't Allow", '': "Don't Allow"})
+            if 'Accesess' not in df_admin.columns: df_admin['Accesess'] = "Don't Allow"
+            else: df_admin['Accesess'] = df_admin['Accesess'].fillna("Don't Allow").astype(str).replace({'nan': "Don't Allow", '': "Don't Allow"})
             
-            df_admin['formatted_phone'] = df_admin['Phone_Number'].apply(format_sheet_phone)
+            df_admin['formatted_phone'] = df_admin['Contact_Number'].apply(format_sheet_phone)
             
             st.markdown("### 📋 Student Resource Access Management")
             view_opt = st.radio("Pipeline Filters", ["All Node Registry Logs", "Awaiting Resource Approval Only"], horizontal=True)
-            display_df = df_admin if view_opt == "All Node Registry Logs" else df_admin[df_admin['Access'] == "Don't Allow"]
+            display_df = df_admin if view_opt == "All Node Registry Logs" else df_admin[df_admin['Accesess'] == "Don't Allow"]
             
             if display_df.empty:
                 st.info("No matching identity data packets active on the workspace pipeline.")
             else:
                 for idx, row in display_df.iterrows():
                     col_info, col_status, col_btn = st.columns([3, 1, 1])
-                    current_access = row['Access']
+                    current_access = row['Accesess']
                     
                     col_info.write(f"👤 **{row['Name']}** ({row['Batch']}) - {row['formatted_phone']}")
                     
                     if current_access.lower() == 'allow':
                         col_status.markdown("<span style='color:#2ec4b6;font-weight:bold;'>Allowed 🔓</span>", unsafe_allow_html=True)
                         if col_btn.button("Revoke Access", key=f"admin_r_{idx}"):
-                            df_admin.at[idx, 'Access'] = "Don't Allow"
+                            df_admin.at[idx, 'Accesess'] = "Don't Allow"
                             df_admin_clean = df_admin.drop(columns=['formatted_phone'], errors='ignore')
                             conn.update(spreadsheet=DB_URL, worksheet="Student_DB", data=df_admin_clean)
                             st.rerun()
                     else:
                         col_status.markdown("<span style='color:#e36414;font-weight:bold;'>Locked 🔒</span>", unsafe_allow_html=True)
                         if col_btn.button("Grant Access", key=f"admin_g_{idx}"):
-                            df_admin.at[idx, 'Access'] = "Allow"
+                            df_admin.at[idx, 'Accesess'] = "Allow"
                             df_admin_clean = df_admin.drop(columns=['formatted_phone'], errors='ignore')
                             conn.update(spreadsheet=DB_URL, worksheet="Student_DB", data=df_admin_clean)
                             st.rerun()
