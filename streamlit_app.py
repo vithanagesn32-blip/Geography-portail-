@@ -40,15 +40,29 @@ DISTRICT_DATA = {
 MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
 # --- Smart WhatsApp Link Generation with Pre-filled Message ---
-DEFAULT_MSG = urllib.parse.quote("Hello Sir, I am using the GeoSense portal and I would like to know more details about the Geography classes.")
-SAHAN_WHATSAPP_LINK = f"https://wa.me/94717123334?text={DEFAULT_MSG}"
+# --- 4. GOOGLE SHEET CONNECTION (DIRECT CREDENTIALS INJECTION) ---
+# Secrets වලින් කෙලින්ම credentials dict එක හදාගන්නවා
+credentials_dict = {
+    "type": st.secrets["connections"]["gsheets"]["type"],
+    "project_id": st.secrets["connections"]["gsheets"]["project_id"],
+    "private_key_id": st.secrets["connections"]["gsheets"]["private_key_id"],
+    "private_key": st.secrets["connections"]["gsheets"]["private_key"].replace("\\n", "\n"),
+    "client_email": st.secrets["connections"]["gsheets"]["client_email"],
+    "client_id": st.secrets["connections"]["gsheets"]["client_id"],
+    "auth_uri": st.secrets["connections"]["gsheets"]["auth_uri"],
+    "token_uri": st.secrets["connections"]["gsheets"]["token_uri"],
+    "auth_provider_x509_cert_url": st.secrets["connections"]["gsheets"]["auth_provider_x509_cert_url"],
+    "client_x509_cert_url": st.secrets["connections"]["gsheets"]["client_x509_cert_url"]
+}
 
-def is_valid_phone(number):
-    return bool(re.match(r"^0[0-9]{9}$", str(number)))
+# Credentials dict එක කෙලින්ම connection එකට pass කරනවා
+conn = st.connection("gsheets", type=GSheetsConnection, credentials=credentials_dict)
 
-def format_sheet_phone(num):
-    if pd.isna(num): return ""
-    cleaned = str(num).split('.')[0].strip()
+try:
+    df_global_students = conn.read(spreadsheet=DB_URL, worksheet="Student_DB", ttl=0)
+except Exception as e:
+    st.error(f"⚠️ Unable to sync with database. Error Details: {e}")
+    df_global_students = pd.DataFrame()
     if len(cleaned) == 9 and cleaned.startswith('7'): return "0" + cleaned
     return cleaned
 
